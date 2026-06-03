@@ -94,9 +94,10 @@ Systems should be designed to grow without requiring major rewrites.
 - Connections
 
 ### Phase 2
-- Node system
-- Selection system
-- Connections
+- Drag & Drop
+- Copy / Paste
+- Undo / Redo
+- Workspace files
 
 ### Phase 3
 - Saving and loading
