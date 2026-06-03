@@ -78,6 +78,24 @@ export class Workspace {
         return this.screenToWorld(this.getMouseScreen());
     }
 
+    private deleteSelectedNodes(): void {
+        if (this.selectedNodes.length === 0) {
+            return;
+        }
+
+        for (const node of this.selectedNodes) {
+            const index = this.nodes.indexOf(node);
+            if (index >= 0) {
+                this.nodes.splice(
+                    index,
+                    1
+                );
+            }
+        }
+
+        this.selectedNodes = [];
+    }
+
     updateZoom() {
         const mouseScreen = this.getMouseScreen();
         const mouseWorldBefore = this.screenToWorld(mouseScreen);
@@ -171,6 +189,10 @@ export class Workspace {
     }
 
     private updateSelection() {
+        if (Input.isKeyPressed("Backspace")) {
+            this.deleteSelectedNodes();
+        }
+
         if (Input.isMousePressed(0) && !this.hoveredNode) {
             this.isSelecting = true;
             this.selectionStart = this.getMouseWorld();
@@ -211,7 +233,6 @@ export class Workspace {
         }
 
         this.clearSelection();
-
         this.addToSelection(this.hoveredNode);
     }
 

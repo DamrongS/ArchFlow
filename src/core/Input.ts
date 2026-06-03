@@ -7,7 +7,7 @@ export class Input {
     static keys = new Set<string>();
     static buttons = new Set<number>();
     static wheelDelta = 0;
-    static pressedButtons = new Set<number>();
+    static pressedButtons = new Set<any>();
 
     static initialize() {
         window.addEventListener("mousemove", (event) => {
@@ -16,7 +16,9 @@ export class Input {
         });
 
         window.addEventListener("keydown", (event) => {
+            console.log(`Key down: ${event.code}`);
             this.keys.add(event.code);
+            this.pressedButtons.add(event.code);
         });
 
         window.addEventListener("keyup", (event) => {
@@ -43,6 +45,10 @@ export class Input {
 
     static isKeyDown(key: string): boolean {
         return this.keys.has(key);
+    }
+
+    static isKeyPressed(key: string): boolean {
+        return this.pressedButtons.has(key);
     }
 
     static isMouseDown(button: number): boolean {

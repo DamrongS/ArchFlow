@@ -175,16 +175,18 @@ Systems should be designed to grow without requiring major rewrites.
 
 ## Roadmap
 ### Phase 0 ✅
-- Engine architecture
-- Rendering system
-- Input system
-- Camera system
-- Infinite workspace
-- Infinite grid
+- Engine architecture ✅
+- Rendering system ✅
+- Input system ✅
+- Camera system ✅
+- Infinite workspace ✅
+- Infinite grid ✅
 
-### Phase 1
-- Node system
-- Selection system
+### Phase 1 
+- Node system ✅
+- Selection system ✅
+- Node Dragging ✅
+- Multi Node Selection ✅
 - Connections
 
 ### Phase 2
@@ -530,7 +532,7 @@ export class Input {
     static keys = new Set<string>();
     static buttons = new Set<number>();
     static wheelDelta = 0;
-    static pressedButtons = new Set<number>();
+    static pressedButtons = new Set<any>();
 
     static initialize() {
         window.addEventListener("mousemove", (event) => {
@@ -539,7 +541,9 @@ export class Input {
         });
 
         window.addEventListener("keydown", (event) => {
+            console.log(`Key down: ${event.code}`);
             this.keys.add(event.code);
+            this.pressedButtons.add(event.code);
         });
 
         window.addEventListener("keyup", (event) => {
@@ -566,6 +570,10 @@ export class Input {
 
     static isKeyDown(key: string): boolean {
         return this.keys.has(key);
+    }
+
+    static isKeyPressed(key: string): boolean {
+        return this.pressedButtons.has(key);
     }
 
     static isMouseDown(button: number): boolean {
@@ -640,17 +648,24 @@ export class Workspace {
     private wasDragging = false;
 
     hoveredNode: Node | null = null;
-    selectedNode: Node | null = null;
+    selectedNodes: Node[] = [];
 
-    private draggedNode: Node | null = null;
+    private draggedNodes: Node[] = [];
     private nodeDragStartMouse: Vector2 | null = null;
-    private nodeDragStartPosition: Vector2 | null = null;
+    private dragStartPositions = new Map<Node, Vector2>();
+
+    private selectionStart: Vector2 | null = null;
+    private selectionEnd: Vector2 | null = null;
+
+    private isSelecting = false;
 
     constructor() {
         this.camera = new Camera();
 
         this.nodes.push(
-        new Node(new Vector2(0, 0), new Vector2(200, 150),"Node"));
+            new Node(new Vector2(0, 0), new Vector2(200, 150), "Node"),
+            new Node(new Vector2(0, 160), new Vector2(200, 150), "Node")
+        );
     }
 
     worldToScreen(position: Vector2): Vector2 {
@@ -661,15 +676,69 @@ export class Workspace {
         return position.div(this.camera.zoom).add(this.camera.position);
     }
 
-    update(dt: number) {
-        const mouseScreen = new Vector2(Input.mousePosition.x - window.innerWidth / 2, Input.mousePosition.y - window.innerHeight / 2);
+    get selectedNode(): Node | null {
+        if (this.selectedNodes.length === 0) {
+            return null;
+        }
 
+        return this.selectedNodes[
+            this.selectedNodes.length - 1
+        ];
+    }
+
+    private clearSelection() {
+        for (const node of this.selectedNodes) {
+            node.deselect();
+        }
+
+        this.selectedNodes = [];
+    }
+
+    private addToSelection(node: Node) {
+        if (this.selectedNodes.includes(node)) {
+            return;
+        }
+
+        node.select();
+        this.selectedNodes.push(node);
+    }
+
+    private getMouseScreen(): Vector2 {
+        return new Vector2(
+            Input.mousePosition.x - window.innerWidth / 2,
+            Input.mousePosition.y - window.innerHeight / 2
+        );
+    }
+
+    private getMouseWorld(): Vector2 {
+        return this.screenToWorld(this.getMouseScreen());
+    }
+
+    private deleteSelectedNodes(): void {
+        if (this.selectedNodes.length === 0) {
+            return;
+        }
+
+        for (const node of this.selectedNodes) {
+            const index = this.nodes.indexOf(node);
+            if (index >= 0) {
+                this.nodes.splice(
+                    index,
+                    1
+                );
+            }
+        }
+
+        this.selectedNodes = [];
+    }
+
+    updateZoom() {
+        const mouseScreen = this.getMouseScreen();
         const mouseWorldBefore = this.screenToWorld(mouseScreen);
         const zoomSpeed = Settings.Camera.ZoomSpeed;
         if (Input.wheelDelta > 0) {
             this.camera.zoom -= zoomSpeed;
         }
-
         if (Input.wheelDelta < 0) {
             this.camera.zoom += zoomSpeed;
         }
@@ -677,85 +746,211 @@ export class Workspace {
         this.camera.zoom = Math.max(Settings.Camera.MinZoom, Math.min(Settings.Camera.MaxZoom, this.camera.zoom));
 
         const mouseWorldAfter = this.screenToWorld(mouseScreen);
-
         this.camera.position = this.camera.position.add(mouseWorldBefore.sub(mouseWorldAfter));
+    }
 
-        if (Input.isKeyDown("ControlLeft")) {
-            console.log("CTRL HELD");
-        }
-
-        if (Input.isMouseDown(2)) {
-            if (!this.wasDragging) {
-                this.dragStartWorld = this.screenToWorld(mouseScreen);
-                this.wasDragging = true;
-            }
-            const currentWorld = this.screenToWorld(mouseScreen);
-            this.camera.position = this.camera.position.add(this.dragStartWorld!.sub(currentWorld));
-        } else {
-            this.wasDragging = false;
-            this.dragStartWorld = null;
-        }
-
-        // if (Input.isMouseDown(1)) {
-            // console.log("MIDDLE CLICK");
-        // }
-
-        // if (Input.isMouseDown(0)) {
-            // console.log("LEFT CLICK");
-        // }
-
-        const mouseWorld = this.screenToWorld(mouseScreen);
+    private updateHover() {
+        const mouseWorld = this.getMouseWorld();
         let foundHover = false;
-        for (const node of this.nodes) {
-            if (node.containsPoint(mouseWorld)) {
-                foundHover = true;
-                if (this.hoveredNode !== node && !this.wasDragging) {
-                    if (this.hoveredNode) {
-                        this.hoveredNode.unhover();
-                    }
 
-                    node.hover();
-                    this.hoveredNode = node;
-                }
-                break;
+        for (const node of this.nodes) {
+            if (!node.containsPoint(mouseWorld)) {
+                continue;
             }
+            foundHover = true;
+            if (this.hoveredNode !== node) {
+                this.hoveredNode?.unhover();
+
+                node.hover();
+                this.hoveredNode = node;
+            }
+
+            break;
         }
 
         if (!foundHover && this.hoveredNode) {
             this.hoveredNode.unhover();
             this.hoveredNode = null;
         }
+    }
 
-        if (Input.isMousePressed(0) && this.hoveredNode) {
-            this.selectedNode?.deselect();
+    private toggleSelection(node: Node) {
+        const index = this.selectedNodes.indexOf(node);
 
-            this.selectedNode = this.hoveredNode;
-            this.selectedNode.select();
-        } else if (Input.isMousePressed(0) && !this.hoveredNode) {
-            this.selectedNode?.deselect();
-            this.selectedNode = null;
+        if (index >= 0) {
+            node.deselect();
+            this.selectedNodes.splice(
+                index,
+                1
+            );
+            return;
         }
 
-        // Start drag
-        if (Input.isMousePressed(0) && this.hoveredNode) {
-            this.draggedNode = this.hoveredNode;
+        this.addToSelection(node);
+    }
 
+    private selectNodesInBox() {
+        if (!this.selectionStart || !this.selectionEnd) {
+            return;
+        }
+
+        this.clearSelection();
+
+        const minX = Math.min(this.selectionStart.x, this.selectionEnd.x);
+        const maxX = Math.max(this.selectionStart.x, this.selectionEnd.x);
+
+        const minY = Math.min(this.selectionStart.y, this.selectionEnd.y);
+        const maxY = Math.max(this.selectionStart.y, this.selectionEnd.y);
+
+        for (const node of this.nodes) {
+            const nodeLeft = node.position.x;
+            const nodeRight = node.position.x + node.size.x;
+
+            const nodeTop = node.position.y;
+            const nodeBottom = node.position.y + node.size.y;
+
+            const boxLeft = minX;
+            const boxRight = maxX;
+
+            const boxTop = minY;
+            const boxBottom = maxY;
+
+            const overlapX = Math.min(nodeRight, boxRight) - Math.max(nodeLeft, boxLeft);
+            const overlapY = Math.min(nodeBottom, boxBottom) - Math.max(nodeTop, boxTop);
+
+            if (overlapX > 0.1 && overlapY > 0.1) {
+                this.addToSelection(node);
+            }
+        }
+    }
+
+    private updateSelection() {
+        if (Input.isKeyPressed("Backspace")) {
+            this.deleteSelectedNodes();
+        }
+
+        if (Input.isMousePressed(0) && !this.hoveredNode) {
+            this.isSelecting = true;
+            this.selectionStart = this.getMouseWorld();
+
+            this.selectionEnd = this.selectionStart.copy();
+            return;
+        }
+
+        if (this.isSelecting && Input.isMouseDown(0)) {
+            this.selectionEnd = this.getMouseWorld();
+        }
+
+        if (this.isSelecting && !Input.isMouseDown(0)) {
+            this.selectNodesInBox();
+
+            this.isSelecting = false;
+
+            this.selectionStart = null;
+            this.selectionEnd = null;
+        }
+
+        if (!Input.isMousePressed(0)) {
+            return;
+        }
+
+        if (!this.hoveredNode) {
+            this.clearSelection();
+            return;
+        }
+
+        if (Input.isKeyDown("ControlLeft")) {
+            this.toggleSelection(this.hoveredNode);
+            return;
+        }
+
+        if (this.selectedNodes.includes(this.hoveredNode)) {
+            return;
+        }
+
+        this.clearSelection();
+        this.addToSelection(this.hoveredNode);
+    }
+
+    private updateNodeDragging() {
+        const mouseWorld = this.getMouseWorld();
+
+        if (Input.isMousePressed(0) && this.hoveredNode) {
+            this.draggedNodes = [...this.selectedNodes];
             this.nodeDragStartMouse = mouseWorld.copy();
-            this.nodeDragStartPosition = this.draggedNode.position.copy();
+            this.dragStartPositions.clear();
+
+            for (const node of this.draggedNodes) {
+                this.dragStartPositions.set(node, node.position.copy());
+            }
         }
 
-        // While dragging
-        if (Input.isMouseDown(0) && this.draggedNode && this.nodeDragStartMouse && this.nodeDragStartPosition) {
+        if (Input.isMouseDown(0) && this.draggedNodes && this.nodeDragStartMouse && this.dragStartPositions) {
             const delta = mouseWorld.sub(this.nodeDragStartMouse);
-            this.draggedNode.move(this.nodeDragStartPosition.add(delta));
+
+            for (const node of this.draggedNodes) {
+                const startPos = this.dragStartPositions.get(node);
+
+                if (!startPos) {
+                    continue;
+                }
+
+                node.move(
+                    startPos.add(delta)
+                );
+            }
         }
 
-        // Stop drag
         if (!Input.isMouseDown(0)) {
-            this.draggedNode = null;
+            this.draggedNodes = [];
             this.nodeDragStartMouse = null;
-            this.nodeDragStartPosition = null;
+            this.dragStartPositions.clear();
         }
+    }
+
+    private drawSelectionBox(renderer: Renderer) {
+        if (!this.isSelecting || !this.selectionStart || !this.selectionEnd) {
+            return;
+        }
+        const start = this.worldToScreen(this.selectionStart);
+        const end = this.worldToScreen(this.selectionEnd);
+        const size = end.sub(start);
+
+        renderer.rect(
+            start,
+            size,
+            Settings.Theme.Selection.Fill,
+            Settings.Theme.Selection.Border
+        );
+    }
+
+    private updateCamera() {
+        const mouseScreen = this.getMouseScreen();
+        if (!Input.isMouseDown(2)) {
+            this.wasDragging = false;
+            this.dragStartWorld = null;
+
+            return;
+        }
+
+        if (!this.wasDragging) {
+            this.dragStartWorld = this.screenToWorld(mouseScreen);
+
+            this.wasDragging = true;
+        }
+
+        const currentWorld = this.screenToWorld(mouseScreen);
+
+        this.camera.position = this.camera.position.add(this.dragStartWorld!.sub(currentWorld));
+    }
+
+    update(dt: number) {
+        this.updateZoom();
+        this.updateCamera();
+
+        this.updateHover();
+        this.updateSelection();
+        this.updateNodeDragging();
     }
 
     private drawGrid(renderer: Renderer) {
@@ -808,6 +1003,8 @@ export class Workspace {
     draw(renderer: Renderer) {
         this.drawGrid(renderer);
         this.drawNodes(renderer);
+
+        this.drawSelectionBox(renderer);
     }
 }
 
