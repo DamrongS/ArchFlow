@@ -373,6 +373,7 @@ FILE: .\src\index.css
 ============================================================
 html,
 body,
+
 #root {
     width: 100%;
     height: 100%;
@@ -387,13 +388,49 @@ body,
     box-sizing: border-box;
 }
 
+.menu {
+    position: relative;
+}
+
 #menu-bar {
+    top: 0;
+    left: 0;
+
+    z-index: 1000;
+
     height: 20px;
 
     display: flex;
     align-items: center;
 
     background: var(--menu-background);
+}
+
+.dropdown {
+    position: absolute;
+
+    top: 100%;
+    left: 0;
+    height: 20px;
+
+    z-index: 1001;
+
+    display: flex;
+    flex-direction: column;
+
+    min-width: 50px;
+
+    background: var(--menu-background);
+
+    border: 1px solid var(--menu-border);
+}
+
+.dropdown button {
+    text-align: left;
+    justify-content: flex-start;
+
+    padding: 6px 12px;
+    width: 100%;
 }
 
 #menu-bar button {
@@ -453,17 +490,28 @@ FILE: .\src\assets\react.svg
 
 FILE: .\src\core\App.css
 ============================================================
+#app {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
 
+#canvas {
+    flex: 1;
+}
 
 
 FILE: .\src\core\App.tsx
 ============================================================
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Engine } from "./Engine";
 import { ThemeService } from "../services/ThemeService";
 
 function App() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    const [openMenu, setOpenMenu] = useState<string | null>(null);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -477,7 +525,6 @@ function App() {
         const engine = new Engine(canvas);
 
         engine.start();
-
     }, []);
 
     return (
@@ -485,26 +532,38 @@ function App() {
 
             <div id="menu-bar">
 
-                <button className="menu-bar">
-                    File
-                </button>
+                <div className="menu">
 
-                <button>
-                    Edit
-                </button>
+                    <button
+                        onClick={() => setOpenMenu(
+                            openMenu === "file"
+                                ? null
+                                : "file"
+                        )}
+                    >
+                        File
+                    </button>
 
-                <button>
-                    View
-                </button>
+                    {openMenu === "file" && (
+                        <div className="dropdown" >
+                            <button>
+                                Workspaces
+                            </button>
 
-                <button>
-                    Help
-                </button>
+                            <button>
+                                Save
+                            </button>
+
+                        </div>
+                    )}
+
+                </div>
 
             </div>
 
             <canvas
                 id="canvas"
+                onClick={() => setOpenMenu(null)}
                 ref={canvasRef}
             />
 
@@ -666,6 +725,10 @@ export class Input {
                     event.movementY
                 );
         });
+
+        window.dispatchEvent(
+            new Event("close-menu")
+        );
     }
 
     static isKeyDown(key: string): boolean {
