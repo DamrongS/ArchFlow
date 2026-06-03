@@ -1,0 +1,103 @@
+import { Camera } from "./Camera";
+import { Renderer } from "./Renderer";
+import { Vector2 } from "../services/Vector2";
+import { Input } from "./Input";
+import { Settings } from "./config/Settings";
+
+export class Workspace {
+    camera: Camera;
+    private dragStartWorld: Vector2 | null = null;
+    private wasDragging = false;
+
+    constructor() {
+        this.camera = new Camera();
+    }
+
+    worldToScreen(position: Vector2): Vector2 {
+        return position.sub(this.camera.position).mult(this.camera.zoom);
+    }
+
+    screenToWorld(position: Vector2): Vector2 {
+        return position.div(this.camera.zoom).add(this.camera.position);
+    }
+
+    update(dt: number) {
+        const mouseScreen = new Vector2(Input.mousePosition.x - window.innerWidth / 2, Input.mousePosition.y - window.innerHeight / 2);
+
+        const mouseWorldBefore = this.screenToWorld(mouseScreen);
+        const zoomSpeed = Settings.Camera.ZoomSpeed;
+        if (Input.wheelDelta > 0) {
+            this.camera.zoom -= zoomSpeed;
+        }
+
+        if (Input.wheelDelta < 0) {
+            this.camera.zoom += zoomSpeed;
+        }
+
+        this.camera.zoom = Math.max(Settings.Camera.MinZoom, Math.min(Settings.Camera.MaxZoom, this.camera.zoom)
+);
+
+        const mouseWorldAfter = this.screenToWorld(mouseScreen);
+
+        this.camera.position = this.camera.position.add(mouseWorldBefore.sub(mouseWorldAfter));
+
+        if (Input.isKeyDown("ControlLeft")) {
+            console.log("CTRL HELD");
+        }
+
+        if (Input.isMouseDown(0)) {
+            if (!this.wasDragging) {
+                this.dragStartWorld = this.screenToWorld(mouseScreen);
+                this.wasDragging = true;
+            }
+
+            const currentWorld = this.screenToWorld(mouseScreen);
+            this.camera.position = this.camera.position.add(this.dragStartWorld!.sub(currentWorld));
+        } else {
+            this.wasDragging = false;
+            this.dragStartWorld = null;
+        }
+
+        if (Input.isMouseDown(1)) {
+            console.log("MIDDLE CLICK");
+        }
+
+        if (Input.isMouseDown(2)) {
+            console.log("RIGHT CLICK");
+        }
+    }
+
+    private drawGrid(renderer: Renderer) {
+        if (!Settings.Grid.Visible) {
+            return;
+        }
+
+        const gridSize = Settings.Grid.Size;
+
+        const leftWorld = this.camera.position.x - window.innerWidth / (2 * this.camera.zoom);
+        const rightWorld = this.camera.position.x + window.innerWidth / (2 * this.camera.zoom);
+        const topWorld = this.camera.position.y - window.innerHeight / (2 * this.camera.zoom);
+        const bottomWorld = this.camera.position.y + window.innerHeight / (2 * this.camera.zoom);
+
+        const startX = Math.floor(leftWorld / gridSize) * gridSize;
+        const startY = Math.floor(topWorld / gridSize) * gridSize;
+
+        for (let x = startX; x <= rightWorld; x += gridSize) {
+            const start = this.worldToScreen(new Vector2(x, topWorld));
+            const end = this.worldToScreen(new Vector2(x, bottomWorld));
+
+            renderer.line(start, end, Settings.Theme.Grid.Minor);
+        }
+
+        for (let y = startY; y <= bottomWorld; y += gridSize) {
+            const start = this.worldToScreen(new Vector2(leftWorld, y));
+            const end = this.worldToScreen(new Vector2(rightWorld, y));
+
+            renderer.line(start, end, Settings.Theme.Grid.Minor);
+        }
+    }
+
+    draw(renderer: Renderer) {
+        this.drawGrid(renderer);
+    }
+}

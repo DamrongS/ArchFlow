@@ -1,4 +1,11 @@
 
+FILE: .\.gitattributes
+============================================================
+# Auto detect text files and perform LF normalization
+* text=auto
+
+
+
 FILE: .\.gitignore
 ============================================================
 # Logs
@@ -85,13 +92,8 @@ FILE: .\project_export.txt
 
 FILE: .\README.md
 ============================================================
-# Tauri + React + Typescript
+# ArchFlow
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
-
-## Recommended IDE Setup
-
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
 
 
 
@@ -185,6 +187,12 @@ FILE: .\.vscode\extensions.json
 
 
 
+FILE: .\.vscode\settings.json
+============================================================
+{
+}
+
+
 FILE: .\public\tauri.svg
 ============================================================
 <svg width="206" height="231" viewBox="0 0 206 231" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -249,18 +257,30 @@ with open(OUTPUT, "w", encoding="utf-8") as out:
 print("Project exported!")
 
 
+FILE: .\src\index.css
+============================================================
+html,
+body,
+#root {
+    width: 100%;
+    height: 100%;
+
+    margin: 0;
+    overflow: hidden;
+}
+
+
 FILE: .\src\main.tsx
 ============================================================
-import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./core/App";
+import "./index.css";
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
+ReactDOM.createRoot(
+    document.getElementById("root") as HTMLElement
+).render(
     <App />
-  </React.StrictMode>,
 );
-
 
 
 FILE: .\src\vite-env.d.ts
@@ -274,73 +294,515 @@ FILE: .\src\assets\react.svg
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="35.93" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 228"><path fill="#00D8FF" d="M210.483 73.824a171.49 171.49 0 0 0-8.24-2.597c.465-1.9.893-3.777 1.273-5.621c6.238-30.281 2.16-54.676-11.769-62.708c-13.355-7.7-35.196.329-57.254 19.526a171.23 171.23 0 0 0-6.375 5.848a155.866 155.866 0 0 0-4.241-3.917C100.759 3.829 77.587-4.822 63.673 3.233C50.33 10.957 46.379 33.89 51.995 62.588a170.974 170.974 0 0 0 1.892 8.48c-3.28.932-6.445 1.924-9.474 2.98C17.309 83.498 0 98.307 0 113.668c0 15.865 18.582 31.778 46.812 41.427a145.52 145.52 0 0 0 6.921 2.165a167.467 167.467 0 0 0-2.01 9.138c-5.354 28.2-1.173 50.591 12.134 58.266c13.744 7.926 36.812-.22 59.273-19.855a145.567 145.567 0 0 0 5.342-4.923a168.064 168.064 0 0 0 6.92 6.314c21.758 18.722 43.246 26.282 56.54 18.586c13.731-7.949 18.194-32.003 12.4-61.268a145.016 145.016 0 0 0-1.535-6.842c1.62-.48 3.21-.974 4.76-1.488c29.348-9.723 48.443-25.443 48.443-41.52c0-15.417-17.868-30.326-45.517-39.844Zm-6.365 70.984c-1.4.463-2.836.91-4.3 1.345c-3.24-10.257-7.612-21.163-12.963-32.432c5.106-11 9.31-21.767 12.459-31.957c2.619.758 5.16 1.557 7.61 2.4c23.69 8.156 38.14 20.213 38.14 29.504c0 9.896-15.606 22.743-40.946 31.14Zm-10.514 20.834c2.562 12.94 2.927 24.64 1.23 33.787c-1.524 8.219-4.59 13.698-8.382 15.893c-8.067 4.67-25.32-1.4-43.927-17.412a156.726 156.726 0 0 1-6.437-5.87c7.214-7.889 14.423-17.06 21.459-27.246c12.376-1.098 24.068-2.894 34.671-5.345a134.17 134.17 0 0 1 1.386 6.193ZM87.276 214.515c-7.882 2.783-14.16 2.863-17.955.675c-8.075-4.657-11.432-22.636-6.853-46.752a156.923 156.923 0 0 1 1.869-8.499c10.486 2.32 22.093 3.988 34.498 4.994c7.084 9.967 14.501 19.128 21.976 27.15a134.668 134.668 0 0 1-4.877 4.492c-9.933 8.682-19.886 14.842-28.658 17.94ZM50.35 144.747c-12.483-4.267-22.792-9.812-29.858-15.863c-6.35-5.437-9.555-10.836-9.555-15.216c0-9.322 13.897-21.212 37.076-29.293c2.813-.98 5.757-1.905 8.812-2.773c3.204 10.42 7.406 21.315 12.477 32.332c-5.137 11.18-9.399 22.249-12.634 32.792a134.718 134.718 0 0 1-6.318-1.979Zm12.378-84.26c-4.811-24.587-1.616-43.134 6.425-47.789c8.564-4.958 27.502 2.111 47.463 19.835a144.318 144.318 0 0 1 3.841 3.545c-7.438 7.987-14.787 17.08-21.808 26.988c-12.04 1.116-23.565 2.908-34.161 5.309a160.342 160.342 0 0 1-1.76-7.887Zm110.427 27.268a347.8 347.8 0 0 0-7.785-12.803c8.168 1.033 15.994 2.404 23.343 4.08c-2.206 7.072-4.956 14.465-8.193 22.045a381.151 381.151 0 0 0-7.365-13.322Zm-45.032-43.861c5.044 5.465 10.096 11.566 15.065 18.186a322.04 322.04 0 0 0-30.257-.006c4.974-6.559 10.069-12.652 15.192-18.18ZM82.802 87.83a323.167 323.167 0 0 0-7.227 13.238c-3.184-7.553-5.909-14.98-8.134-22.152c7.304-1.634 15.093-2.97 23.209-3.984a321.524 321.524 0 0 0-7.848 12.897Zm8.081 65.352c-8.385-.936-16.291-2.203-23.593-3.793c2.26-7.3 5.045-14.885 8.298-22.6a321.187 321.187 0 0 0 7.257 13.246c2.594 4.48 5.28 8.868 8.038 13.147Zm37.542 31.03c-5.184-5.592-10.354-11.779-15.403-18.433c4.902.192 9.899.29 14.978.29c5.218 0 10.376-.117 15.453-.343c-4.985 6.774-10.018 12.97-15.028 18.486Zm52.198-57.817c3.422 7.8 6.306 15.345 8.596 22.52c-7.422 1.694-15.436 3.058-23.88 4.071a382.417 382.417 0 0 0 7.859-13.026a347.403 347.403 0 0 0 7.425-13.565Zm-16.898 8.101a358.557 358.557 0 0 1-12.281 19.815a329.4 329.4 0 0 1-23.444.823c-7.967 0-15.716-.248-23.178-.732a310.202 310.202 0 0 1-12.513-19.846h.001a307.41 307.41 0 0 1-10.923-20.627a310.278 310.278 0 0 1 10.89-20.637l-.001.001a307.318 307.318 0 0 1 12.413-19.761c7.613-.576 15.42-.876 23.31-.876H128c7.926 0 15.743.303 23.354.883a329.357 329.357 0 0 1 12.335 19.695a358.489 358.489 0 0 1 11.036 20.54a329.472 329.472 0 0 1-11 20.722Zm22.56-122.124c8.572 4.944 11.906 24.881 6.52 51.026c-.344 1.668-.73 3.367-1.15 5.09c-10.622-2.452-22.155-4.275-34.23-5.408c-7.034-10.017-14.323-19.124-21.64-27.008a160.789 160.789 0 0 1 5.888-5.4c18.9-16.447 36.564-22.941 44.612-18.3ZM128 90.808c12.625 0 22.86 10.235 22.86 22.86s-10.235 22.86-22.86 22.86s-22.86-10.235-22.86-22.86s10.235-22.86 22.86-22.86Z"></path></svg>
 
 
+FILE: .\src\core\App.css
+============================================================
+
+
+
 FILE: .\src\core\App.tsx
 ============================================================
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { useEffect, useRef } from "react";
+import { Engine } from "./Engine";
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+    const canvasRef =useRef<HTMLCanvasElement>(null);
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
 
-  return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+        const engine =new Engine(canvas);
+        engine.start();
+        
+    }, []);
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
+    return (
+        <canvas
+            ref={canvasRef}
         />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
-  );
+    );
 }
 
 export default App;
 
 
+FILE: .\src\core\Camera.ts
+============================================================
+import { Vector2 } from "../services/Vector2";
 
-FILE: .\src\core\Camera.tsx
+export class Camera {
+    position: Vector2;
+    zoom: number;
+
+    constructor() {
+        this.position = new Vector2(0, 0);
+        this.zoom = 1;
+    }
+}
+
+
+FILE: .\src\core\Engine.ts
+============================================================
+import { Input } from "./Input";
+import { Renderer } from "./Renderer";
+import { Workspace } from "./Workspace";
+import { Settings } from "./config/Settings";
+
+export class Engine {
+    workspace: Workspace;
+    renderer: Renderer;
+
+    canvas: HTMLCanvasElement;
+    ctx: CanvasRenderingContext2D;
+
+    lastTime: number;
+
+    constructor(canvas: HTMLCanvasElement) {
+        this.canvas = canvas;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { 
+            throw new Error("Failed to get context");
+        }
+
+        this.ctx = ctx;
+        this.renderer = new Renderer(ctx);
+        this.workspace = new Workspace();
+        this.lastTime = performance.now();
+    }
+
+    start() {
+        console.log("ENGINE START");
+        Input.initialize();
+        this.resize();
+        window.addEventListener("resize", () => this.resize());
+
+        this.loop();
+    }
+
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    }
+
+    loop = () => {
+        const now = performance.now();
+        const deltaTime = (now - this.lastTime) / 1000;
+
+        this.lastTime = now;
+        this.workspace.update(deltaTime);
+
+        this.ctx.fillStyle = Settings.Theme.Background;
+
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.save();
+
+        this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+
+        this.workspace.draw(this.renderer);
+
+        this.ctx.restore();
+
+        Input.endFrame();
+
+        requestAnimationFrame(this.loop);
+    };
+}
+
+
+FILE: .\src\core\Input.ts
+============================================================
+import { Vector2 } from "../services/Vector2";
+
+export class Input {
+
+    static mousePosition = new Vector2(0, 0);
+    static mouseDelta =  new Vector2(0, 0);
+    static keys = new Set<string>();
+    static buttons = new Set<number>();
+    static wheelDelta = 0;
+
+    static initialize() {
+        window.addEventListener("mousemove", (event) => {
+            this.mouseDelta =new Vector2(event.movementX, event.movementY);
+            this.mousePosition = new Vector2(event.clientX, event.clientY);
+        });
+
+        window.addEventListener("keydown", (event) => {
+            this.keys.add(event.code);
+        });
+
+        window.addEventListener("keyup", (event) => {
+            this.keys.delete(event.code);
+        });
+
+        window.addEventListener("mousedown", (event) => {
+            this.buttons.add(event.button);
+        });
+
+        window.addEventListener("mouseup", (event) => {
+            this.buttons.delete(event.button);
+        });
+
+        window.addEventListener("wheel", (event) => {
+            this.wheelDelta = event.deltaY;
+        });
+    }
+
+    static isKeyDown(key: string): boolean {
+        return this.keys.has(key);
+    }
+
+    static isMouseDown(button: number): boolean {
+        return this.buttons.has(button);
+    }
+
+    static endFrame() {
+        this.wheelDelta = 0;
+    }
+}
+
+
+FILE: .\src\core\Registry.ts
 ============================================================
 
 
 
-FILE: .\src\core\Registry.tsx
+FILE: .\src\core\Renderer.ts
 ============================================================
+import { Vector2 } from "../services/Vector2";
+
+export class Renderer {
+    constructor(private ctx: CanvasRenderingContext2D) {
+
+    }
+
+    line(start: Vector2, end: Vector2, color: string = "#ffffff") {
+        this.ctx.strokeStyle = color;
+        this.ctx.beginPath();
+        this.ctx.moveTo(start.x, start.y);
+
+        this.ctx.lineTo(end.x, end.y);
+        
+        this.ctx.stroke();
+    }
+}
 
 
+FILE: .\src\core\Workspace.ts
+============================================================
+import { Camera } from "./Camera";
+import { Renderer } from "./Renderer";
+import { Vector2 } from "../services/Vector2";
+import { Input } from "./Input";
+import { Settings } from "./config/Settings";
 
-FILE: .\src\core\Workspace.tsx
+export class Workspace {
+    camera: Camera;
+    private dragStartWorld: Vector2 | null = null;
+    private wasDragging = false;
+
+    constructor() {
+        this.camera = new Camera();
+    }
+
+    worldToScreen(position: Vector2): Vector2 {
+        return position.sub(this.camera.position).mult(this.camera.zoom);
+    }
+
+    screenToWorld(position: Vector2): Vector2 {
+        return position.div(this.camera.zoom).add(this.camera.position);
+    }
+
+    update(dt: number) {
+        const mouseScreen = new Vector2(Input.mousePosition.x - window.innerWidth / 2, Input.mousePosition.y - window.innerHeight / 2);
+
+        const mouseWorldBefore = this.screenToWorld(mouseScreen);
+        const zoomSpeed = Settings.Camera.ZoomSpeed;
+        if (Input.wheelDelta > 0) {
+            this.camera.zoom -= zoomSpeed;
+        }
+
+        if (Input.wheelDelta < 0) {
+            this.camera.zoom += zoomSpeed;
+        }
+
+        this.camera.zoom = Math.max(Settings.Camera.MinZoom, Math.min(Settings.Camera.MaxZoom, this.camera.zoom)
+);
+
+        const mouseWorldAfter = this.screenToWorld(mouseScreen);
+
+        this.camera.position = this.camera.position.add(mouseWorldBefore.sub(mouseWorldAfter));
+
+        if (Input.isKeyDown("ControlLeft")) {
+            console.log("CTRL HELD");
+        }
+
+        if (Input.isMouseDown(0)) {
+            if (!this.wasDragging) {
+                this.dragStartWorld = this.screenToWorld(mouseScreen);
+                this.wasDragging = true;
+            }
+
+            const currentWorld = this.screenToWorld(mouseScreen);
+            this.camera.position = this.camera.position.add(this.dragStartWorld!.sub(currentWorld));
+        } else {
+            this.wasDragging = false;
+            this.dragStartWorld = null;
+        }
+
+        if (Input.isMouseDown(1)) {
+            console.log("MIDDLE CLICK");
+        }
+
+        if (Input.isMouseDown(2)) {
+            console.log("RIGHT CLICK");
+        }
+    }
+
+    private drawGrid(renderer: Renderer) {
+        if (!Settings.Grid.Visible) {
+            return;
+        }
+
+        const gridSize = Settings.Grid.Size;
+
+        const leftWorld = this.camera.position.x - window.innerWidth / (2 * this.camera.zoom);
+        const rightWorld = this.camera.position.x + window.innerWidth / (2 * this.camera.zoom);
+        const topWorld = this.camera.position.y - window.innerHeight / (2 * this.camera.zoom);
+        const bottomWorld = this.camera.position.y + window.innerHeight / (2 * this.camera.zoom);
+
+        const startX = Math.floor(leftWorld / gridSize) * gridSize;
+        const startY = Math.floor(topWorld / gridSize) * gridSize;
+
+        for (let x = startX; x <= rightWorld; x += gridSize) {
+            const start = this.worldToScreen(new Vector2(x, topWorld));
+            const end = this.worldToScreen(new Vector2(x, bottomWorld));
+
+            renderer.line(start, end, Settings.Theme.Grid.Minor);
+        }
+
+        for (let y = startY; y <= bottomWorld; y += gridSize) {
+            const start = this.worldToScreen(new Vector2(leftWorld, y));
+            const end = this.worldToScreen(new Vector2(rightWorld, y));
+
+            renderer.line(start, end, Settings.Theme.Grid.Minor);
+        }
+    }
+
+    draw(renderer: Renderer) {
+        this.drawGrid(renderer);
+    }
+}
+
+
+FILE: .\src\core\config\Settings.ts
+============================================================
+import { DarkTheme } from "./Themes/DarkTheme";
+import { LightTheme } from "./Themes/LightTheme";
+
+export const Settings = {
+    Theme: DarkTheme,
+
+    Grid: {
+        Size: 50,
+        Visible: true,
+    },
+
+    Camera: {
+        MinZoom: 0.25,
+        MaxZoom: 4,
+        ZoomSpeed: 0.1,
+    },
+};
+
+
+FILE: .\src\core\config\WorkspaceConfig.ts
+============================================================
+export const WorkspaceConfig = {
+
+    Grid: {
+        Size: 25,
+    },
+
+    Camera: {
+        ZoomSpeed: 0.1,
+        MinZoom: 0.25,
+        MaxZoom: 4,
+    },
+
+};
+
+
+FILE: .\src\core\config\Themes\DarkTheme.ts
+============================================================
+export const DarkTheme = {
+    Background: "#1e1e1e",
+
+    Grid: {
+        Minor: "#2a2a2a",
+        Major: "#3a3a3a",
+    },
+
+    Node: {
+        Background: "#252526",
+        Border: "#ffffff",
+        Text: "#ffffff",
+    },
+
+    Selection: {
+        Border: "#4f9fff",
+        Fill: "#4f9fff22",
+    },
+
+};
+
+
+FILE: .\src\core\config\Themes\LightTheme.ts
+============================================================
+export const LightTheme = {
+    Background: "#ffffff",
+
+    Grid: {
+        Minor: "#cccccc",
+        Major: "#999999",
+    },
+
+    Node: {
+        Background: "#ffffff",
+        Border: "#3f3f46",
+        Text: "#252526",
+    },
+
+    Selection: {
+        Border: "#4f9fff",
+        Fill: "#4f9fff22",
+    },
+
+};
+
+
+FILE: .\src\services\Enums.ts
+============================================================
+export enum EasingStyle {
+    Linear = "linear",
+    Sine = "sine",
+    Quad = "quad",
+    Cubic = "cubic",
+    Quart = "quart",
+    Quint = "quint",
+    Expo = "expo",
+    Back = "back",
+    Bounce = "bounce",
+    Elastic = "elastic",
+}
+
+export enum EasingDirection {
+    In = "in",
+    Out = "out",
+    InOut = "inout",
+}
+
+
+FILE: .\src\services\TweenInfo.ts
+============================================================
+import {
+    EasingStyle,
+    EasingDirection
+} from "./Enums";
+
+export class TweenInfo {
+    constructor(
+        public duration: number,
+        public easingStyle: EasingStyle,
+        public easingDirection: EasingDirection
+    ) {}
+}
+
+
+FILE: .\src\services\TweenService.ts
+============================================================
+import { TweenInfo } from "./TweenInfo";
+
+export class TweenService {
+    constructor(what: number, to: number, TweenInfo : TweenInfo) {}
+
+    static play() {}
+
+    static linear(number: number): number {
+        return number;
+    }
+}
+
+
+FILE: .\src\services\Vector2.ts
+============================================================
+export class Vector2 {
+    constructor(public x: number, public y: number) {}
+
+    add(other: Vector2): Vector2 {
+        return new Vector2(this.x + other.x, this.y + other.y);
+    }
+
+    sub(other: Vector2): Vector2 {
+        return new Vector2(this.x - other.x, this.y - other.y);
+    }
+
+    mult(scalar: number): Vector2 {
+        return new Vector2(this.x * scalar, this.y * scalar);
+    }
+
+    div(scalar: number): Vector2 {
+        return new Vector2(this.x / scalar, this.y / scalar);
+    }
+
+    dot(other: Vector2): number {
+        return this.x * other.x + this.y * other.y;
+    }
+
+    cross(other: Vector2): number {
+        return this.x * other.y - this.y * other.x;
+    }
+
+    magnitude(): number {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+
+    normalize(): Vector2 {
+        const len = this.magnitude();
+        if (len === 0) return new Vector2(0, 0);
+        return this.div(len);
+    }
+
+    distanceTo(other: Vector2): number {
+        return this.sub(other).magnitude();
+    }
+
+    copy(): Vector2 {
+        return new Vector2(this.x, this.y);
+    }
+
+    angleTo(other: Vector2): number {
+        return Math.atan2(other.y - this.y, other.x - this.x);
+    }
+
+    angle(): number {
+        return Math.atan2(this.y, this.x);
+    }
+
+    rotate(angle: number): Vector2 {
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        return new Vector2(this.x * cos - this.y * sin, this.x * sin + this.y * cos);
+    }
+
+    static zero(): Vector2 {
+        return new Vector2(0, 0);
+    }
+
+}
+
+
+FILE: .\src\types\Node.ts
 ============================================================
 
 
