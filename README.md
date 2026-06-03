@@ -13,6 +13,11 @@ ArchFlow is designed to become more than a note-taking tool.
 
 The long-term goal is to create a digital workspace where knowledge, systems, software architecture, game design, worldbuilding, and project planning can coexist within a single visual environment.
 
+## Status
+ArchFlow is currently in active early development.
+The core engine, rendering pipeline, camera system, and infinite workspace have been implemented.
+Development is currently focused on the node system and workspace interaction.
+
 ## Why ArchFlow?
 Most tools specialize in a single domain.
 
@@ -75,17 +80,18 @@ Information should be organized spatially rather than linearly.
 Systems should be designed to grow without requiring major rewrites.
 
 ## Roadmap
-### Phase 0
+### Phase 0 ✅
 - Engine architecture
 - Rendering system
+- Input system
 - Camera system
 - Infinite workspace
+- Infinite grid
 
-### Phase 1 ✅
-- Core engine
-- Camera
-- Grid
-- Input
+### Phase 1
+- Node system
+- Selection system
+- Connections
 
 ### Phase 2
 - Node system
