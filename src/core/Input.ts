@@ -44,13 +44,13 @@ export class Input {
 
         window.addEventListener("mousemove", (event) => {
 
-            const canvas =
-                document.getElementById(
-                    "canvas"
-                ) as HTMLCanvasElement;
+            const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 
-            const rect =
-                canvas.getBoundingClientRect();
+            if (!canvas) {
+                return;
+            }
+
+            const rect = canvas.getBoundingClientRect();
 
             this.mousePosition =
                 new Vector2(

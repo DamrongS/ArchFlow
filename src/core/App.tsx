@@ -6,6 +6,7 @@ function App() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     const [openMenu, setOpenMenu] = useState<string | null>(null);
+    const [engine, setEngine] = useState<Engine | null>(null);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -16,9 +17,10 @@ function App() {
 
         ThemeService.applyTheme();
 
-        const engine = new Engine(canvas);
+        const newEngine = new Engine(canvas);
+        newEngine.start();
+        setEngine(newEngine);
 
-        engine.start();
     }, []);
 
     return (

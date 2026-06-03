@@ -8,6 +8,8 @@ import { Node } from "../types/Node";
 export class Workspace {
     camera: Camera;
     nodes: Node[] = [];
+
+    private visible = false;
     private dragStartWorld: Vector2 | null = null;
     private wasDragging = false;
 
@@ -23,13 +25,17 @@ export class Workspace {
 
     private isSelecting = false;
 
-    constructor() {
+    constructor(public name: string) {
         this.camera = new Camera();
 
-        this.nodes.push(
-            new Node(new Vector2(0, 0), new Vector2(200, 150), "Node"),
-            new Node(new Vector2(0, 160), new Vector2(200, 150), "Node")
-        );
+        //this.nodes.push(
+        // new Node(new Vector2(0, 0), new Vector2(200, 150), "Node"),
+        //new Node(new Vector2(0, 160), new Vector2(200, 150), "Node")
+        //);
+    }
+
+    activate() {
+        this.visible = true;
     }
 
     worldToScreen(position: Vector2): Vector2 {
@@ -309,6 +315,8 @@ export class Workspace {
     }
 
     update(dt: number) {
+        if (!this.visible) return;
+
         this.updateZoom();
         this.updateCamera();
 
@@ -365,6 +373,8 @@ export class Workspace {
 
 
     draw(renderer: Renderer) {
+        if (!this.visible) return;
+
         this.drawGrid(renderer);
         this.drawNodes(renderer);
 

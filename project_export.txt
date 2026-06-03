@@ -512,6 +512,7 @@ function App() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     const [openMenu, setOpenMenu] = useState<string | null>(null);
+    const [engine, setEngine] = useState<Engine | null>(null);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -522,9 +523,10 @@ function App() {
 
         ThemeService.applyTheme();
 
-        const engine = new Engine(canvas);
+        const newEngine = new Engine(canvas);
+        newEngine.start();
+        setEngine(newEngine);
 
-        engine.start();
     }, []);
 
     return (
@@ -593,11 +595,15 @@ FILE: .\src\core\Engine.ts
 ============================================================
 import { Input } from "./Input";
 import { Renderer } from "./Renderer";
-import { Workspace } from "./Workspace";
 import { Settings } from "./config/Settings";
+import { WorkspaceManager } from "./WorkspaceManager";
+import { WorkspaceBrowser } from "./WorkspaceBrowser";
+import { Vector2 } from "../services/Vector2";
+import { Node } from "../types/Node";
 
 export class Engine {
-    workspace: Workspace;
+    workspaceBrowser: WorkspaceBrowser;
+    workspaceManager: WorkspaceManager;
     renderer: Renderer;
 
     canvas: HTMLCanvasElement;
@@ -614,15 +620,24 @@ export class Engine {
 
         this.ctx = ctx;
         this.renderer = new Renderer(ctx);
-        this.workspace = new Workspace();
+        this.workspaceManager = new WorkspaceManager();
+        this.workspaceBrowser = new WorkspaceBrowser(this.workspaceManager);
         this.lastTime = performance.now();
     }
 
     start() {
         console.log("ENGINE START");
+        console.log(this.workspaceManager.getWorkspaces());
         Input.initialize();
         this.resize();
         window.addEventListener("resize", () => this.resize());
+
+        const combat = this.workspaceManager.createWorkspace("Combat");
+        this.workspaceManager.createWorkspace("AI");
+
+        combat.nodes.push(new Node(new Vector2(500, 500), new Vector2(200, 150), "Combat Node"));
+
+        this.workspaceManager.setActiveWorkspace(combat);
 
         this.loop();
     }
@@ -637,16 +652,23 @@ export class Engine {
         const deltaTime = (now - this.lastTime) / 1000;
 
         this.lastTime = now;
-        this.workspace.update(deltaTime);
+        this.workspaceManager.getActiveWorkspace().update(deltaTime);
+
+        this.workspaceBrowser.update();
 
         this.ctx.fillStyle = Settings.Theme.Background;
 
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.workspaceBrowser.setSize(new Vector2(this.canvas.width * 0.8, this.canvas.height * 0.8));
+        this.workspaceBrowser.setPosition(new Vector2(this.canvas.width * 0.1, this.canvas.height * 0.1));
+        this.workspaceBrowser.draw(this.renderer);
+
         this.ctx.save();
 
         this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
 
-        this.workspace.draw(this.renderer);
+        this.workspaceManager.getActiveWorkspace().draw(this.renderer);
 
         this.ctx.restore();
 
@@ -705,13 +727,13 @@ export class Input {
 
         window.addEventListener("mousemove", (event) => {
 
-            const canvas =
-                document.getElementById(
-                    "canvas"
-                ) as HTMLCanvasElement;
+            const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 
-            const rect =
-                canvas.getBoundingClientRect();
+            if (!canvas) {
+                return;
+            }
+
+            const rect = canvas.getBoundingClientRect();
 
             this.mousePosition =
                 new Vector2(
@@ -807,6 +829,8 @@ import { Node } from "../types/Node";
 export class Workspace {
     camera: Camera;
     nodes: Node[] = [];
+
+    private visible = false;
     private dragStartWorld: Vector2 | null = null;
     private wasDragging = false;
 
@@ -822,7 +846,7 @@ export class Workspace {
 
     private isSelecting = false;
 
-    constructor() {
+    constructor(public name: string) {
         this.camera = new Camera();
 
         this.nodes.push(
@@ -1108,6 +1132,8 @@ export class Workspace {
     }
 
     update(dt: number) {
+        if(!this.visible) return;
+        
         this.updateZoom();
         this.updateCamera();
 
@@ -1164,10 +1190,167 @@ export class Workspace {
 
 
     draw(renderer: Renderer) {
+        if(!this.visible) return;
+
         this.drawGrid(renderer);
         this.drawNodes(renderer);
 
         this.drawSelectionBox(renderer);
+    }
+}
+
+
+FILE: .\src\core\WorkspaceBrowser.ts
+============================================================
+import { WorkspaceManager } from "./WorkspaceManager";
+import { Renderer } from "./Renderer";
+import { Vector2 } from "../services/Vector2";
+
+export class WorkspaceBrowser {
+    private visible: boolean = true;
+    private position = new Vector2(0, 0);
+
+    private size = new Vector2(600, 400);
+
+    constructor(
+        private workspaceManager: WorkspaceManager
+    ) { }
+
+    open() {
+        this.visible = true;
+    }
+
+    close() {
+        this.visible = false;
+    }
+
+    toggle() {
+        this.visible = !this.visible;
+    }
+
+    setPosition(position: Vector2) {
+        this.position = position;
+    }
+
+    getSize(): Vector2 {
+        return this.size;
+    }
+
+    setSize(size: Vector2) {
+        this.size = size;
+    }
+
+    update() {
+
+    }
+
+    draw(renderer: Renderer) {
+
+        console.log("WorkspaceBrowser draw");
+
+        if (!this.visible) {
+            return;
+        }
+
+        renderer.rect(
+            this.position,
+            this.size,
+            "#252526",
+            "#3a3a3a",
+            1
+        );
+
+        const createButtonPos = this.position.add(new Vector2(20, 20));
+
+        renderer.rect(createButtonPos, new Vector2(100, 100));
+        renderer.text("+", createButtonPos.add(new Vector2(45, 55)));
+
+        const workspaces = this.workspaceManager.getWorkspaces();
+
+        for (let i = 0; i < workspaces.length; i++) {
+            const cardPos = this.position.add(new Vector2(140 + i * 120, 20));
+            renderer.rect(cardPos, new Vector2(100, 100));
+            renderer.text(workspaces[i].name, cardPos.add(new Vector2(10, 120)));
+        }
+
+        // Tegn baggrund
+        // Tegn [+]
+        // Tegn workspace previews
+    }
+}
+
+
+FILE: .\src\core\WorkspaceManager.ts
+============================================================
+import { Workspace } from "./Workspace";
+
+export class WorkspaceManager {
+
+    private workspaces: Workspace[] = [];
+
+    private activeWorkspace: Workspace;
+
+    constructor() {
+
+        const workspace =
+            new Workspace("Workspace");
+
+        this.workspaces.push(
+            workspace
+        );
+
+        this.activeWorkspace =
+            workspace;
+    }
+
+    getActiveWorkspace(): Workspace {
+
+        return this.activeWorkspace;
+    }
+
+    setActiveWorkspace(
+        workspace: Workspace
+    ) {
+
+        this.activeWorkspace =
+            workspace;
+    }
+
+    getWorkspaces(): Workspace[] {
+
+        return this.workspaces;
+    }
+
+    createWorkspace(
+        name: string
+    ): Workspace {
+
+        const workspace =
+            new Workspace(name);
+
+        this.workspaces.push(
+            workspace
+        );
+
+        return workspace;
+    }
+
+    removeWorkspace(
+        workspace: Workspace
+    ) {
+
+        const index =
+            this.workspaces.indexOf(
+                workspace
+            );
+
+        if (index !== -1) {
+
+            this.workspaces.splice(
+                index,
+                1
+            );
+        }
     }
 }
 
