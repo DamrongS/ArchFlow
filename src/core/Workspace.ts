@@ -3,14 +3,19 @@ import { Renderer } from "./Renderer";
 import { Vector2 } from "../services/Vector2";
 import { Input } from "./Input";
 import { Settings } from "./config/Settings";
+import { Node } from "../types/Node";
 
 export class Workspace {
     camera: Camera;
+    nodes: Node[] = [];
     private dragStartWorld: Vector2 | null = null;
     private wasDragging = false;
 
     constructor() {
         this.camera = new Camera();
+
+        this.nodes.push(
+        new Node(new Vector2(0, 0), new Vector2(200, 150),"Node"));
     }
 
     worldToScreen(position: Vector2): Vector2 {
@@ -34,8 +39,7 @@ export class Workspace {
             this.camera.zoom += zoomSpeed;
         }
 
-        this.camera.zoom = Math.max(Settings.Camera.MinZoom, Math.min(Settings.Camera.MaxZoom, this.camera.zoom)
-);
+        this.camera.zoom = Math.max(Settings.Camera.MinZoom, Math.min(Settings.Camera.MaxZoom, this.camera.zoom));
 
         const mouseWorldAfter = this.screenToWorld(mouseScreen);
 
@@ -86,18 +90,36 @@ export class Workspace {
             const start = this.worldToScreen(new Vector2(x, topWorld));
             const end = this.worldToScreen(new Vector2(x, bottomWorld));
 
-            renderer.line(start, end, Settings.Theme.Grid.Minor);
+            if (x % (gridSize * Settings.Grid.MajorLineFrequency) === 0) {
+                renderer.line(start, end, Settings.Theme.Grid.Major);
+            } else {
+                renderer.line(start, end, Settings.Theme.Grid.Minor);
+            }
         }
 
         for (let y = startY; y <= bottomWorld; y += gridSize) {
             const start = this.worldToScreen(new Vector2(leftWorld, y));
             const end = this.worldToScreen(new Vector2(rightWorld, y));
 
-            renderer.line(start, end, Settings.Theme.Grid.Minor);
+            if (y % (gridSize * Settings.Grid.MajorLineFrequency) === 0) {
+                renderer.line(start, end, Settings.Theme.Grid.Major);
+            } else {
+                renderer.line(start, end, Settings.Theme.Grid.Minor);
+            }
         }
     }
 
+    drawNodes(renderer: Renderer) {
+        for (const node of this.nodes) {
+            const screenPos = this.worldToScreen(node.position);
+
+            node.draw(renderer, screenPos, this.camera.zoom);
+        }
+    }
+
+
     draw(renderer: Renderer) {
         this.drawGrid(renderer);
+        this.drawNodes(renderer);
     }
 }

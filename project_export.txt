@@ -94,7 +94,117 @@ FILE: .\README.md
 ============================================================
 # ArchFlow
 
+ArchFlow is a visual project architecture and workflow editor built from scratch in TypeScript.
 
+The goal is to create an infinite workspace where ideas, systems, projects, concepts, and relationships can be organized visually through nodes and connections.
+
+Unlike traditional note-taking applications, ArchFlow focuses on spatial thinking and visual structure.
+
+If you've ever felt limited by traditional mind maps and flowcharts, ArchFlow aims to provide a more flexible and visually expressive alternative.
+
+## Vision
+ArchFlow is designed to become more than a note-taking tool.
+
+The long-term goal is to create a digital workspace where knowledge, systems, software architecture, game design, worldbuilding, and project planning can coexist within a single visual environment.
+
+## Status
+ArchFlow is currently in active early development.
+The core engine, rendering pipeline, camera system, and infinite workspace have been implemented.
+Development is currently focused on the node system and workspace interaction.
+
+## Why ArchFlow?
+Most tools specialize in a single domain.
+
+- Mind maps focus on ideas.
+- Flowcharts focus on processes.
+- Note-taking apps focus on documents.
+- Game design tools focus on gameplay systems.
+
+ArchFlow aims to unify these approaches within a single infinite workspace.
+
+## Features
+### Current
+- Infinite workspace
+- Infinite grid rendering
+- Camera panning
+- Zoom-to-cursor navigation
+- Input management system
+- Renderer abstraction
+- Configuration system
+- Theme system
+- World-space coordinate system
+
+### Planned
+- Nodes
+- Connections
+- Drag & Drop
+- Selection
+- Copy / Paste
+- Save / Load
+- Undo / Redo
+- Reference Nodes
+- Knowledge Graphs
+- Different Workspace Files
+- Game development-oriented node systems
+## Architecture
+
+ArchFlow is built around a custom engine architecture:
+```
+Application
+└──Engine
+    ├── Renderer
+    ├── Input
+    ├── Workspace
+    ├── Camera
+    └── Services
+```
+
+The application uses a world-space coordinate system similar to game engines.
+
+## Philosophy
+ArchFlow is designed around three principles:
+
+### Infinite Space
+The workspace should never impose artificial limits.
+
+### Visual Thinking
+Information should be organized spatially rather than linearly.
+
+### Extensibility
+Systems should be designed to grow without requiring major rewrites.
+
+## Roadmap
+### Phase 0 ✅
+- Engine architecture
+- Rendering system
+- Input system
+- Camera system
+- Infinite workspace
+- Infinite grid
+
+### Phase 1
+- Node system
+- Selection system
+- Connections
+
+### Phase 2
+- Drag & Drop
+- Copy / Paste
+- Undo / Redo
+- Workspace files
+
+### Phase 3
+- Saving and loading
+- References
+- Search
+
+### Phase 4
+- Collaboration
+- Plugins
+- Advanced graph tools
+
+## Author
+Christoffer Damrong Blond Schjødt
 
 
 FILE: .\tsconfig.json
@@ -470,13 +580,14 @@ FILE: .\src\core\Registry.ts
 FILE: .\src\core\Renderer.ts
 ============================================================
 import { Vector2 } from "../services/Vector2";
+import { Settings } from "./config/Settings";
 
 export class Renderer {
     constructor(private ctx: CanvasRenderingContext2D) {
 
     }
 
-    line(start: Vector2, end: Vector2, color: string = "#ffffff") {
+    line(start: Vector2, end: Vector2, color: string = Settings.Theme.Grid.Minor) {
         this.ctx.strokeStyle = color;
         this.ctx.beginPath();
         this.ctx.moveTo(start.x, start.y);
@@ -484,6 +595,20 @@ export class Renderer {
         this.ctx.lineTo(end.x, end.y);
         
         this.ctx.stroke();
+    }
+
+    rect(position: Vector2, size: Vector2, color: string = Settings.Theme.Node.Background, border: string = Settings.Theme.Node.Border) {
+        this.ctx.fillStyle = color;
+        this.ctx.strokeStyle = border;
+
+        this.ctx.fillRect(position.x, position.y, size.x, size.y);
+        this.ctx.strokeRect(position.x, position.y, size.x, size.y);
+    }
+
+    text(text: string, position: Vector2, size: number = 14, color: string = Settings.Theme.Node.Text, cameraZoom: number = 1) {
+        this.ctx.fillStyle = color;
+        this.ctx.font = `${size * cameraZoom}px Arial`;
+        this.ctx.fillText(text, position.x, position.y);
     }
 }
 
@@ -495,14 +620,19 @@ import { Renderer } from "./Renderer";
 import { Vector2 } from "../services/Vector2";
 import { Input } from "./Input";
 import { Settings } from "./config/Settings";
+import { Node } from "../types/Node";
 
 export class Workspace {
     camera: Camera;
+    nodes: Node[] = [];
     private dragStartWorld: Vector2 | null = null;
     private wasDragging = false;
 
     constructor() {
         this.camera = new Camera();
+
+        this.nodes.push(
+        new Node(new Vector2(0, 0), new Vector2(200, 150),"Node"));
     }
 
     worldToScreen(position: Vector2): Vector2 {
@@ -526,8 +656,7 @@ export class Workspace {
             this.camera.zoom += zoomSpeed;
         }
 
-        this.camera.zoom = Math.max(Settings.Camera.MinZoom, Math.min(Settings.Camera.MaxZoom, this.camera.zoom)
-);
+        this.camera.zoom = Math.max(Settings.Camera.MinZoom, Math.min(Settings.Camera.MaxZoom, this.camera.zoom));
 
         const mouseWorldAfter = this.screenToWorld(mouseScreen);
 
@@ -578,19 +707,37 @@ export class Workspace {
             const start = this.worldToScreen(new Vector2(x, topWorld));
             const end = this.worldToScreen(new Vector2(x, bottomWorld));
 
-            renderer.line(start, end, Settings.Theme.Grid.Minor);
+            if (x % (gridSize * Settings.Grid.MajorLineFrequency) === 0) {
+                renderer.line(start, end, Settings.Theme.Grid.Major);
+            } else {
+                renderer.line(start, end, Settings.Theme.Grid.Minor);
+            }
         }
 
         for (let y = startY; y <= bottomWorld; y += gridSize) {
             const start = this.worldToScreen(new Vector2(leftWorld, y));
             const end = this.worldToScreen(new Vector2(rightWorld, y));
 
-            renderer.line(start, end, Settings.Theme.Grid.Minor);
+            if (y % (gridSize * Settings.Grid.MajorLineFrequency) === 0) {
+                renderer.line(start, end, Settings.Theme.Grid.Major);
+            } else {
+                renderer.line(start, end, Settings.Theme.Grid.Minor);
+            }
         }
     }
 
+    drawNodes(renderer: Renderer) {
+        for (const node of this.nodes) {
+            const screenPos = this.worldToScreen(node.position);
+
+            node.draw(renderer, screenPos, this.camera.zoom);
+        }
+    }
+
+
     draw(renderer: Renderer) {
         this.drawGrid(renderer);
+        this.drawNodes(renderer);
     }
 }
 
@@ -599,6 +746,8 @@ FILE: .\src\core\config\Settings.ts
 ============================================================
 import { DarkTheme } from "./Themes/DarkTheme";
 import { LightTheme } from "./Themes/LightTheme";
+import { MidnightTheme } from "./Themes/MidnightTheme";
+import { BlueprintTheme } from "./Themes/BlueprintTheme";
 
 export const Settings = {
     Theme: DarkTheme,
@@ -606,6 +755,7 @@ export const Settings = {
     Grid: {
         Size: 50,
         Visible: true,
+        MajorLineFrequency: 10,
     },
 
     Camera: {
@@ -633,6 +783,34 @@ export const WorkspaceConfig = {
 };
 
 
+FILE: .\src\core\config\Themes\BlueprintTheme.ts
+============================================================
+export const BlueprintTheme = {
+    Background: "#002082",
+
+    Grid: {
+        Minor: "#3057E1",
+        Major: "#768cd6",
+    },
+
+    Node: {
+        Background: "#3057E1",
+        Border: "#CED8F7",
+        Text: "#CED8F7",
+    },
+
+    Selection: {
+        Border: "#CED8F7",
+        Fill: "#CED8F722",
+    },
+
+    Accent: {
+        Primary: "#CED8F7",
+        Secondary: "#4A6DE5",
+    },
+};
+
+
 FILE: .\src\core\config\Themes\DarkTheme.ts
 ============================================================
 export const DarkTheme = {
@@ -653,7 +831,6 @@ export const DarkTheme = {
         Border: "#4f9fff",
         Fill: "#4f9fff22",
     },
-
 };
 
 
@@ -678,6 +855,34 @@ export const LightTheme = {
         Fill: "#4f9fff22",
     },
 
+};
+
+
+FILE: .\src\core\config\Themes\MidnightTheme.ts
+============================================================
+export const MidnightTheme = {
+    Background: "#0f1220",
+
+    Grid: {
+        Minor: "#1b2038",
+        Major: "#2a3157",
+    },
+
+    Node: {
+        Background: "#181d33",
+        Border: "#4d5aa6",
+        Text: "#e8ecff",
+    },
+
+    Selection: {
+        Border: "#7c8cff",
+        Fill: "#7c8cff22",
+    },
+
+    Accent: {
+        Primary: "#7c8cff",
+        Secondary: "#4d5aa6",
+    },
 };
 
 
@@ -804,7 +1009,36 @@ export class Vector2 {
 
 FILE: .\src\types\Node.ts
 ============================================================
+import { Vector2 } from "../services/Vector2";
+import { Renderer } from "../core/Renderer";
+import { Settings } from "../core/config/Settings";
 
+export class Node {
+    constructor(
+        public position: Vector2,
+        public size: Vector2,
+        public title: string
+    ) {}
+
+    containsPoint(point: Vector2): boolean {
+        return (
+            point.x >= this.position.x &&
+            point.x <= this.position.x + this.size.x &&
+            point.y >= this.position.y &&
+            point.y <= this.position.y + this.size.y
+        );
+    }
+
+    draw(renderer: Renderer, position: Vector2, cameraZoom: number = 1) {
+
+        renderer.rect(position, this.size.mult(cameraZoom), Settings.Theme.Node.Background, Settings.Theme.Node.Border);
+        renderer.text(this.title, position.add(new Vector2(10 * cameraZoom, 20 * cameraZoom)), 14, Settings.Theme.Node.Text, cameraZoom);
+    }
+
+    setPosition(newPosition: Vector2) {
+        this.position = newPosition;
+    }
+}
 
 
 FILE: .\src-tauri\.gitignore

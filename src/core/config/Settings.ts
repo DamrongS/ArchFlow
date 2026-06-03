@@ -1,5 +1,7 @@
 import { DarkTheme } from "./Themes/DarkTheme";
 import { LightTheme } from "./Themes/LightTheme";
+import { MidnightTheme } from "./Themes/MidnightTheme";
+import { BlueprintTheme } from "./Themes/BlueprintTheme";
 
 export const Settings = {
     Theme: DarkTheme,
@@ -7,6 +9,7 @@ export const Settings = {
     Grid: {
         Size: 50,
         Visible: true,
+        MajorLineFrequency: 10,
     },
 
     Camera: {

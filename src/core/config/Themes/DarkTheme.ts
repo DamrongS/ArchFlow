@@ -16,5 +16,4 @@ export const DarkTheme = {
         Border: "#4f9fff",
         Fill: "#4f9fff22",
     },
-
 };
