@@ -81,17 +81,18 @@ Systems should be designed to grow without requiring major rewrites.
 
 ## Roadmap
 ### Phase 0 ✅
-- Engine architecture
-- Rendering system
-- Input system
-- Camera system
-- Infinite workspace
-- Infinite grid
+- Engine architecture ✅
+- Rendering system ✅
+- Input system ✅
+- Camera system ✅
+- Infinite workspace ✅
+- Infinite grid ✅
 
 ### Phase 1 
 - Node system ✅
 - Selection system ✅
 - Node Dragging ✅
+- Multi Node Selection ✅
 - Connections
 
 ### Phase 2
