@@ -378,7 +378,52 @@ body,
     height: 100%;
 
     margin: 0;
+    padding: 0;
+
     overflow: hidden;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+#menu-bar {
+    height: 20px;
+
+    display: flex;
+    align-items: center;
+
+    background: var(--menu-background);
+}
+
+#menu-bar button {
+
+    height: 100%;
+
+    padding: 0 16px;
+
+    border: none;
+
+    background: var(--menu-button);
+
+    color: var(--menu-text);
+
+    cursor: pointer;
+}
+
+#menu-bar button:hover {
+
+    background:
+        var(--menu-button-hover);
+    background: #3e3e42;
+}
+
+#menu-bar button:active {
+    background: var(--menu-button-active);
+}
+
+canvas {
+    display: block;
 }
 
 
@@ -415,23 +460,55 @@ FILE: .\src\core\App.tsx
 ============================================================
 import { useEffect, useRef } from "react";
 import { Engine } from "./Engine";
+import { ThemeService } from "../services/ThemeService";
 
 function App() {
-    const canvasRef =useRef<HTMLCanvasElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
         const canvas = canvasRef.current;
-        if (!canvas) return;
 
-        const engine =new Engine(canvas);
+        if (!canvas) {
+            return;
+        }
+
+        ThemeService.applyTheme();
+
+        const engine = new Engine(canvas);
+
         engine.start();
-        
+
     }, []);
 
     return (
-        <canvas
-            ref={canvasRef}
-        />
+        <div id="app">
+
+            <div id="menu-bar">
+
+                <button className="menu-bar">
+                    File
+                </button>
+
+                <button>
+                    Edit
+                </button>
+
+                <button>
+                    View
+                </button>
+
+                <button>
+                    Help
+                </button>
+
+            </div>
+
+            <canvas
+                id="canvas"
+                ref={canvasRef}
+            />
+
+        </div>
     );
 }
 
@@ -528,7 +605,7 @@ import { Vector2 } from "../services/Vector2";
 export class Input {
 
     static mousePosition = new Vector2(0, 0);
-    static mouseDelta =  new Vector2(0, 0);
+    static mouseDelta = new Vector2(0, 0);
     static keys = new Set<string>();
     static buttons = new Set<number>();
     static wheelDelta = 0;
@@ -536,7 +613,7 @@ export class Input {
 
     static initialize() {
         window.addEventListener("mousemove", (event) => {
-            this.mouseDelta =new Vector2(event.movementX, event.movementY);
+            this.mouseDelta = new Vector2(event.movementX, event.movementY);
             this.mousePosition = new Vector2(event.clientX, event.clientY);
         });
 
@@ -565,6 +642,29 @@ export class Input {
 
         window.addEventListener("contextmenu", (event) => {
             event.preventDefault();
+        });
+
+        window.addEventListener("mousemove", (event) => {
+
+            const canvas =
+                document.getElementById(
+                    "canvas"
+                ) as HTMLCanvasElement;
+
+            const rect =
+                canvas.getBoundingClientRect();
+
+            this.mousePosition =
+                new Vector2(
+                    event.clientX - rect.left,
+                    event.clientY - rect.top
+                );
+
+            this.mouseDelta =
+                new Vector2(
+                    event.movementX,
+                    event.movementY
+                );
         });
     }
 
@@ -1188,6 +1288,45 @@ export enum EasingDirection {
     In = "in",
     Out = "out",
     InOut = "inout",
+}
+
+
+FILE: .\src\services\ThemeService.ts
+============================================================
+import { Settings } from "../core/config/Settings";
+
+export class ThemeService {
+    static applyTheme() {
+        document.documentElement.style.setProperty(
+            "--menu-background",
+            Settings.Theme.Background
+        );
+
+        document.documentElement.style.setProperty(
+            "--menu-button",
+            Settings.Theme.Background
+        );
+
+        document.documentElement.style.setProperty(
+            "--menu-button-hover",
+            Settings.Theme.Node.HoverBackground
+        );
+
+        document.documentElement.style.setProperty(
+            "--menu-text",
+            Settings.Theme.Node.Text
+        );
+
+        document.documentElement.style.setProperty(
+            "--menu-border",
+            Settings.Theme.Background
+        );
+
+        document.documentElement.style.setProperty(
+            "--menu-button-active",
+            Settings.Theme.Node.Background
+        );
+    }
 }
 
 

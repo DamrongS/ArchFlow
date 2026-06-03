@@ -3,7 +3,7 @@ import { Vector2 } from "../services/Vector2";
 export class Input {
 
     static mousePosition = new Vector2(0, 0);
-    static mouseDelta =  new Vector2(0, 0);
+    static mouseDelta = new Vector2(0, 0);
     static keys = new Set<string>();
     static buttons = new Set<number>();
     static wheelDelta = 0;
@@ -11,7 +11,7 @@ export class Input {
 
     static initialize() {
         window.addEventListener("mousemove", (event) => {
-            this.mouseDelta =new Vector2(event.movementX, event.movementY);
+            this.mouseDelta = new Vector2(event.movementX, event.movementY);
             this.mousePosition = new Vector2(event.clientX, event.clientY);
         });
 
@@ -41,6 +41,33 @@ export class Input {
         window.addEventListener("contextmenu", (event) => {
             event.preventDefault();
         });
+
+        window.addEventListener("mousemove", (event) => {
+
+            const canvas =
+                document.getElementById(
+                    "canvas"
+                ) as HTMLCanvasElement;
+
+            const rect =
+                canvas.getBoundingClientRect();
+
+            this.mousePosition =
+                new Vector2(
+                    event.clientX - rect.left,
+                    event.clientY - rect.top
+                );
+
+            this.mouseDelta =
+                new Vector2(
+                    event.movementX,
+                    event.movementY
+                );
+        });
+
+        window.dispatchEvent(
+            new Event("close-menu")
+        );
     }
 
     static isKeyDown(key: string): boolean {
