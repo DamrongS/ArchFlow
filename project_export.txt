@@ -530,6 +530,7 @@ export class Input {
     static keys = new Set<string>();
     static buttons = new Set<number>();
     static wheelDelta = 0;
+    static pressedButtons = new Set<number>();
 
     static initialize() {
         window.addEventListener("mousemove", (event) => {
@@ -547,6 +548,7 @@ export class Input {
 
         window.addEventListener("mousedown", (event) => {
             this.buttons.add(event.button);
+            this.pressedButtons.add(event.button);
         });
 
         window.addEventListener("mouseup", (event) => {
@@ -555,6 +557,10 @@ export class Input {
 
         window.addEventListener("wheel", (event) => {
             this.wheelDelta = event.deltaY;
+        });
+
+        window.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
         });
     }
 
@@ -566,8 +572,13 @@ export class Input {
         return this.buttons.has(button);
     }
 
+    static isMousePressed(button: number): boolean {
+        return this.pressedButtons.has(button);
+    }
+
     static endFrame() {
         this.wheelDelta = 0;
+        this.pressedButtons.clear();
     }
 }
 
@@ -597,7 +608,7 @@ export class Renderer {
         this.ctx.stroke();
     }
 
-    rect(position: Vector2, size: Vector2, color: string = Settings.Theme.Node.Background, border: string = Settings.Theme.Node.Border) {
+    rect(position: Vector2, size: Vector2, color: string = Settings.Theme.Node.Background, border: string = Settings.Theme.Node.Border, borderRadius: number = 0) {
         this.ctx.fillStyle = color;
         this.ctx.strokeStyle = border;
 
@@ -627,6 +638,13 @@ export class Workspace {
     nodes: Node[] = [];
     private dragStartWorld: Vector2 | null = null;
     private wasDragging = false;
+
+    hoveredNode: Node | null = null;
+    selectedNode: Node | null = null;
+
+    private draggedNode: Node | null = null;
+    private nodeDragStartMouse: Vector2 | null = null;
+    private nodeDragStartPosition: Vector2 | null = null;
 
     constructor() {
         this.camera = new Camera();
@@ -666,12 +684,11 @@ export class Workspace {
             console.log("CTRL HELD");
         }
 
-        if (Input.isMouseDown(0)) {
+        if (Input.isMouseDown(2)) {
             if (!this.wasDragging) {
                 this.dragStartWorld = this.screenToWorld(mouseScreen);
                 this.wasDragging = true;
             }
-
             const currentWorld = this.screenToWorld(mouseScreen);
             this.camera.position = this.camera.position.add(this.dragStartWorld!.sub(currentWorld));
         } else {
@@ -679,12 +696,65 @@ export class Workspace {
             this.dragStartWorld = null;
         }
 
-        if (Input.isMouseDown(1)) {
-            console.log("MIDDLE CLICK");
+        // if (Input.isMouseDown(1)) {
+            // console.log("MIDDLE CLICK");
+        // }
+
+        // if (Input.isMouseDown(0)) {
+            // console.log("LEFT CLICK");
+        // }
+
+        const mouseWorld = this.screenToWorld(mouseScreen);
+        let foundHover = false;
+        for (const node of this.nodes) {
+            if (node.containsPoint(mouseWorld)) {
+                foundHover = true;
+                if (this.hoveredNode !== node && !this.wasDragging) {
+                    if (this.hoveredNode) {
+                        this.hoveredNode.unhover();
+                    }
+
+                    node.hover();
+                    this.hoveredNode = node;
+                }
+                break;
+            }
         }
 
-        if (Input.isMouseDown(2)) {
-            console.log("RIGHT CLICK");
+        if (!foundHover && this.hoveredNode) {
+            this.hoveredNode.unhover();
+            this.hoveredNode = null;
+        }
+
+        if (Input.isMousePressed(0) && this.hoveredNode) {
+            this.selectedNode?.deselect();
+
+            this.selectedNode = this.hoveredNode;
+            this.selectedNode.select();
+        } else if (Input.isMousePressed(0) && !this.hoveredNode) {
+            this.selectedNode?.deselect();
+            this.selectedNode = null;
+        }
+
+        // Start drag
+        if (Input.isMousePressed(0) && this.hoveredNode) {
+            this.draggedNode = this.hoveredNode;
+
+            this.nodeDragStartMouse = mouseWorld.copy();
+            this.nodeDragStartPosition = this.draggedNode.position.copy();
+        }
+
+        // While dragging
+        if (Input.isMouseDown(0) && this.draggedNode && this.nodeDragStartMouse && this.nodeDragStartPosition) {
+            const delta = mouseWorld.sub(this.nodeDragStartMouse);
+            this.draggedNode.move(this.nodeDragStartPosition.add(delta));
+        }
+
+        // Stop drag
+        if (!Input.isMouseDown(0)) {
+            this.draggedNode = null;
+            this.nodeDragStartMouse = null;
+            this.nodeDragStartPosition = null;
         }
     }
 
@@ -802,6 +872,9 @@ export const BlueprintTheme = {
     Selection: {
         Border: "#CED8F7",
         Fill: "#CED8F722",
+        Callback: function(selectedNode: unknown) {
+            console.log("Blueprint theme node selected:", selectedNode);
+        }
     },
 
     Accent: {
@@ -825,11 +898,18 @@ export const DarkTheme = {
         Background: "#252526",
         Border: "#ffffff",
         Text: "#ffffff",
+        HoverBackground: "#333333",
+        HoverBorder: "#c1e8ff",
+        SelectedBackground: "#252526",
+        SelectedBorder: "#4f9fff",
     },
 
     Selection: {
         Border: "#4f9fff",
         Fill: "#4f9fff22",
+        Callback: function(selectedNode: unknown) {
+            console.log("Dark theme node selected:", selectedNode);
+        }
     },
 };
 
@@ -853,6 +933,9 @@ export const LightTheme = {
     Selection: {
         Border: "#4f9fff",
         Fill: "#4f9fff22",
+        Callback: function(selectedNode: unknown) {
+            console.log("Light theme node selected:", selectedNode);
+        }
     },
 
 };
@@ -877,6 +960,9 @@ export const MidnightTheme = {
     Selection: {
         Border: "#7c8cff",
         Fill: "#7c8cff22",
+        Callback: function(selectedNode: unknown) {
+            console.log("Midnight theme node selected:", selectedNode);
+        }
     },
 
     Accent: {
@@ -1013,12 +1099,21 @@ import { Vector2 } from "../services/Vector2";
 import { Renderer } from "../core/Renderer";
 import { Settings } from "../core/config/Settings";
 
+export enum NodeState {
+    Normal,
+    Hovered,
+    Selected
+}
+
 export class Node {
+    state: NodeState;
     constructor(
         public position: Vector2,
         public size: Vector2,
         public title: string
-    ) {}
+    ) {
+        this.state = NodeState.Normal;
+    }
 
     containsPoint(point: Vector2): boolean {
         return (
@@ -1030,13 +1125,49 @@ export class Node {
     }
 
     draw(renderer: Renderer, position: Vector2, cameraZoom: number = 1) {
+        let backgroundColor = Settings.Theme.Node.Background;
+        let borderColor = Settings.Theme.Node.Border;
 
-        renderer.rect(position, this.size.mult(cameraZoom), Settings.Theme.Node.Background, Settings.Theme.Node.Border);
+        if (this.state === NodeState.Selected) {
+            backgroundColor = Settings.Theme.Node.SelectedBackground;
+            borderColor = Settings.Theme.Node.SelectedBorder;
+        }
+
+        if (this.state === NodeState.Hovered) {
+            backgroundColor = Settings.Theme.Node.HoverBackground;
+            borderColor = Settings.Theme.Node.HoverBorder;
+        }
+
+        renderer.rect(position, this.size.mult(cameraZoom), backgroundColor, borderColor, 10 * cameraZoom);
         renderer.text(this.title, position.add(new Vector2(10 * cameraZoom, 20 * cameraZoom)), 14, Settings.Theme.Node.Text, cameraZoom);
     }
 
     setPosition(newPosition: Vector2) {
         this.position = newPosition;
+    }
+
+    select() {
+        this.state = NodeState.Selected;
+    }
+
+    deselect() {
+        this.state = NodeState.Normal;
+    }
+
+    hover() {
+        if (this.state !== NodeState.Selected) {
+            this.state = NodeState.Hovered;
+        }
+    }
+
+    unhover() {
+        if (this.state === NodeState.Hovered) {
+            this.state = NodeState.Normal;
+        }
+    }
+
+    move(position: Vector2) {
+        this.position = position;
     }
 }
 

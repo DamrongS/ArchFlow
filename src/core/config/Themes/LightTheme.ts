@@ -15,6 +15,9 @@ export const LightTheme = {
     Selection: {
         Border: "#4f9fff",
         Fill: "#4f9fff22",
+        Callback: function(selectedNode: unknown) {
+            console.log("Light theme node selected:", selectedNode);
+        }
     },
 
 };

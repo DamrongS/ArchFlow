@@ -7,6 +7,7 @@ export class Input {
     static keys = new Set<string>();
     static buttons = new Set<number>();
     static wheelDelta = 0;
+    static pressedButtons = new Set<number>();
 
     static initialize() {
         window.addEventListener("mousemove", (event) => {
@@ -24,6 +25,7 @@ export class Input {
 
         window.addEventListener("mousedown", (event) => {
             this.buttons.add(event.button);
+            this.pressedButtons.add(event.button);
         });
 
         window.addEventListener("mouseup", (event) => {
@@ -32,6 +34,10 @@ export class Input {
 
         window.addEventListener("wheel", (event) => {
             this.wheelDelta = event.deltaY;
+        });
+
+        window.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
         });
     }
 
@@ -43,7 +49,12 @@ export class Input {
         return this.buttons.has(button);
     }
 
+    static isMousePressed(button: number): boolean {
+        return this.pressedButtons.has(button);
+    }
+
     static endFrame() {
         this.wheelDelta = 0;
+        this.pressedButtons.clear();
     }
 }

@@ -15,6 +15,9 @@ export const BlueprintTheme = {
     Selection: {
         Border: "#CED8F7",
         Fill: "#CED8F722",
+        Callback: function(selectedNode: unknown) {
+            console.log("Blueprint theme node selected:", selectedNode);
+        }
     },
 
     Accent: {

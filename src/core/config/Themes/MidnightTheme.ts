@@ -15,6 +15,9 @@ export const MidnightTheme = {
     Selection: {
         Border: "#7c8cff",
         Fill: "#7c8cff22",
+        Callback: function(selectedNode: unknown) {
+            console.log("Midnight theme node selected:", selectedNode);
+        }
     },
 
     Accent: {

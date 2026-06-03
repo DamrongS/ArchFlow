@@ -88,9 +88,10 @@ Systems should be designed to grow without requiring major rewrites.
 - Infinite workspace
 - Infinite grid
 
-### Phase 1
-- Node system
-- Selection system
+### Phase 1 
+- Node system ✅
+- Selection system ✅
+- Node Dragging ✅
 - Connections
 
 ### Phase 2

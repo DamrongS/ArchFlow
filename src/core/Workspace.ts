@@ -11,6 +11,13 @@ export class Workspace {
     private dragStartWorld: Vector2 | null = null;
     private wasDragging = false;
 
+    hoveredNode: Node | null = null;
+    selectedNode: Node | null = null;
+
+    private draggedNode: Node | null = null;
+    private nodeDragStartMouse: Vector2 | null = null;
+    private nodeDragStartPosition: Vector2 | null = null;
+
     constructor() {
         this.camera = new Camera();
 
@@ -49,12 +56,11 @@ export class Workspace {
             console.log("CTRL HELD");
         }
 
-        if (Input.isMouseDown(0)) {
+        if (Input.isMouseDown(2)) {
             if (!this.wasDragging) {
                 this.dragStartWorld = this.screenToWorld(mouseScreen);
                 this.wasDragging = true;
             }
-
             const currentWorld = this.screenToWorld(mouseScreen);
             this.camera.position = this.camera.position.add(this.dragStartWorld!.sub(currentWorld));
         } else {
@@ -62,12 +68,65 @@ export class Workspace {
             this.dragStartWorld = null;
         }
 
-        if (Input.isMouseDown(1)) {
-            console.log("MIDDLE CLICK");
+        // if (Input.isMouseDown(1)) {
+            // console.log("MIDDLE CLICK");
+        // }
+
+        // if (Input.isMouseDown(0)) {
+            // console.log("LEFT CLICK");
+        // }
+
+        const mouseWorld = this.screenToWorld(mouseScreen);
+        let foundHover = false;
+        for (const node of this.nodes) {
+            if (node.containsPoint(mouseWorld)) {
+                foundHover = true;
+                if (this.hoveredNode !== node && !this.wasDragging) {
+                    if (this.hoveredNode) {
+                        this.hoveredNode.unhover();
+                    }
+
+                    node.hover();
+                    this.hoveredNode = node;
+                }
+                break;
+            }
         }
 
-        if (Input.isMouseDown(2)) {
-            console.log("RIGHT CLICK");
+        if (!foundHover && this.hoveredNode) {
+            this.hoveredNode.unhover();
+            this.hoveredNode = null;
+        }
+
+        if (Input.isMousePressed(0) && this.hoveredNode) {
+            this.selectedNode?.deselect();
+
+            this.selectedNode = this.hoveredNode;
+            this.selectedNode.select();
+        } else if (Input.isMousePressed(0) && !this.hoveredNode) {
+            this.selectedNode?.deselect();
+            this.selectedNode = null;
+        }
+
+        // Start drag
+        if (Input.isMousePressed(0) && this.hoveredNode) {
+            this.draggedNode = this.hoveredNode;
+
+            this.nodeDragStartMouse = mouseWorld.copy();
+            this.nodeDragStartPosition = this.draggedNode.position.copy();
+        }
+
+        // While dragging
+        if (Input.isMouseDown(0) && this.draggedNode && this.nodeDragStartMouse && this.nodeDragStartPosition) {
+            const delta = mouseWorld.sub(this.nodeDragStartMouse);
+            this.draggedNode.move(this.nodeDragStartPosition.add(delta));
+        }
+
+        // Stop drag
+        if (!Input.isMouseDown(0)) {
+            this.draggedNode = null;
+            this.nodeDragStartMouse = null;
+            this.nodeDragStartPosition = null;
         }
     }
 
