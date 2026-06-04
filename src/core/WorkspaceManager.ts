@@ -7,7 +7,7 @@ export class WorkspaceManager {
     private activeWorkspace: Workspace;
 
     constructor() {
-        const workspace = new Workspace("Workspace");
+        const workspace = new Workspace("Workspace Template");
 
         this.workspaces.push(workspace);
 
@@ -29,7 +29,6 @@ export class WorkspaceManager {
 
     createWorkspace(name: string): Workspace {
         const workspace = new Workspace(name);
-
         this.workspaces.push(workspace);
 
         return workspace;

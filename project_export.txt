@@ -614,7 +614,7 @@ export class Engine {
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
         const ctx = canvas.getContext("2d");
-        if (!ctx) { 
+        if (!ctx) {
             throw new Error("Failed to get context");
         }
 
@@ -632,12 +632,12 @@ export class Engine {
         this.resize();
         window.addEventListener("resize", () => this.resize());
 
-        const combat = this.workspaceManager.createWorkspace("Combat");
-        this.workspaceManager.createWorkspace("AI");
+        //const combat = this.workspaceManager.createWorkspace("Combat");
+        //this.workspaceManager.createWorkspace("AI");
 
-        combat.nodes.push(new Node(new Vector2(500, 500), new Vector2(200, 150), "Combat Node"));
+        //combat.nodes.push(new Node(new Vector2(500, 500), new Vector2(200, 150), "Combat Node"));
 
-        this.workspaceManager.setActiveWorkspace(combat);
+        //this.workspaceManager.setActiveWorkspace(combat);
 
         this.loop();
     }
@@ -684,13 +684,13 @@ FILE: .\src\core\Input.ts
 import { Vector2 } from "../services/Vector2";
 
 export class Input {
-
     static mousePosition = new Vector2(0, 0);
     static mouseDelta = new Vector2(0, 0);
     static keys = new Set<string>();
     static buttons = new Set<number>();
     static wheelDelta = 0;
     static pressedButtons = new Set<any>();
+    static releasedButtons = new Set<number>();
 
     static initialize() {
         window.addEventListener("mousemove", (event) => {
@@ -699,7 +699,20 @@ export class Input {
         });
 
         window.addEventListener("keydown", (event) => {
+            if (event.code === "Tab") {
+                event.preventDefault();
+            }
+
+            if (event.code === "AltLeft") {
+                event.preventDefault();
+            }
+
+            if (event.code === "Space") {
+                event.preventDefault();
+            }
+
             console.log(`Key down: ${event.code}`);
+
             this.keys.add(event.code);
             this.pressedButtons.add(event.code);
         });
@@ -715,6 +728,7 @@ export class Input {
 
         window.addEventListener("mouseup", (event) => {
             this.buttons.delete(event.button);
+            this.releasedButtons.add(event.button);
         });
 
         window.addEventListener("wheel", (event) => {
@@ -726,7 +740,6 @@ export class Input {
         });
 
         window.addEventListener("mousemove", (event) => {
-
             const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 
             if (!canvas) {
@@ -769,9 +782,18 @@ export class Input {
         return this.pressedButtons.has(button);
     }
 
+    static isMouseReleased(button: number): boolean {
+        return this.releasedButtons.has(button);
+    }
+
+    static getKeysDown() {
+        return this.keys
+    }
+
     static endFrame() {
         this.wheelDelta = 0;
         this.pressedButtons.clear();
+        this.releasedButtons.clear();
     }
 }
 
@@ -825,10 +847,12 @@ import { Vector2 } from "../services/Vector2";
 import { Input } from "./Input";
 import { Settings } from "./config/Settings";
 import { Node } from "../types/Node";
+import { WorkspaceSidebar } from "./WorkspaceSidebar";
 
 export class Workspace {
     camera: Camera;
     nodes: Node[] = [];
+    workspaceSidebar: WorkspaceSidebar;
 
     private visible = false;
     private dragStartWorld: Vector2 | null = null;
@@ -845,14 +869,21 @@ export class Workspace {
     private selectionEnd: Vector2 | null = null;
 
     private isSelecting = false;
+    private returning = false;
+    private focusing = false;
 
     constructor(public name: string) {
         this.camera = new Camera();
+        this.workspaceSidebar = new WorkspaceSidebar(this.addNode.bind(this));
 
-        this.nodes.push(
-            new Node(new Vector2(0, 0), new Vector2(200, 150), "Node"),
-            new Node(new Vector2(0, 160), new Vector2(200, 150), "Node")
-        );
+        //this.nodes.push(
+        // new Node(new Vector2(0, 0), new Vector2(200, 150), "Node"),
+        //new Node(new Vector2(0, 160), new Vector2(200, 150), "Node")
+        //);
+    }
+
+    activate() {
+        this.visible = true;
     }
 
     worldToScreen(position: Vector2): Vector2 {
@@ -861,6 +892,10 @@ export class Workspace {
 
     screenToWorld(position: Vector2): Vector2 {
         return position.div(this.camera.zoom).add(this.camera.position);
+    }
+
+    addNode(node: Node) {
+        this.nodes.push(node);
     }
 
     get selectedNode(): Node | null {
@@ -922,11 +957,16 @@ export class Workspace {
     updateZoom() {
         const mouseScreen = this.getMouseScreen();
         const mouseWorldBefore = this.screenToWorld(mouseScreen);
-        const zoomSpeed = Settings.Camera.ZoomSpeed;
+        const zoomSpeed = Settings.Camera.ZoomSpeed * this.camera.zoom;
+
         if (Input.wheelDelta > 0) {
+            this.returning = false;
+            this.focusing = false;
             this.camera.zoom -= zoomSpeed;
         }
         if (Input.wheelDelta < 0) {
+            this.returning = false;
+            this.focusing = false;
             this.camera.zoom += zoomSpeed;
         }
 
@@ -1016,7 +1056,7 @@ export class Workspace {
             this.deleteSelectedNodes();
         }
 
-        if (Input.isMousePressed(0) && !this.hoveredNode) {
+        if (Input.isMousePressed(0) && !this.hoveredNode && !this.workspaceSidebar.isMouseInside()) {
             this.isSelecting = true;
             this.selectionStart = this.getMouseWorld();
 
@@ -1096,6 +1136,7 @@ export class Workspace {
     }
 
     private drawSelectionBox(renderer: Renderer) {
+
         if (!this.isSelecting || !this.selectionStart || !this.selectionEnd) {
             return;
         }
@@ -1129,17 +1170,58 @@ export class Workspace {
         const currentWorld = this.screenToWorld(mouseScreen);
 
         this.camera.position = this.camera.position.add(this.dragStartWorld!.sub(currentWorld));
+        this.returning = false
+        this.focusing = false;
     }
 
     update(dt: number) {
-        if(!this.visible) return;
-        
+        if (!this.visible) return;
+
+        if (Input.isKeyPressed("Space")) {
+            if (Input.isKeyDown("ControlLeft")) {
+                this.focusing = true;
+                this.returning = true;
+
+            } else if (Input.isKeyDown("ShiftLeft")) {
+                this.focusing = true;
+
+            } else {
+                this.returning = true;
+
+            }
+        }
+
+        if (this.returning) {
+            this.camera.position = this.camera.position.lerp(new Vector2(0, 0), 10 * dt);
+            if (this.camera.position.distanceTo(Vector2.zero()) < 0.1) {
+                this.camera.position = Vector2.zero();
+                this.returning = false;
+            }
+        }
+
+        if(this.focusing) {
+            this.camera.zoom = this.camera.zoom + (1 - this.camera.zoom) * 10 * dt;
+            if (this.camera.zoom > 0.999 && this.camera.zoom < 1.001) {
+                this.camera.zoom = 1;
+                this.focusing = false;
+            }
+        }
+
         this.updateZoom();
         this.updateCamera();
 
         this.updateHover();
         this.updateSelection();
         this.updateNodeDragging();
+
+        this.workspaceSidebar.update(dt);
+
+        const mouseScreen = this.getMouseScreen();
+        if (this.workspaceSidebar.containsPoint(mouseScreen)) {
+            this.workspaceSidebar.hover(true)
+        } else {
+            this.workspaceSidebar.hover(false)
+        }
     }
 
     private drawGrid(renderer: Renderer) {
@@ -1190,12 +1272,26 @@ export class Workspace {
 
 
     draw(renderer: Renderer) {
-        if(!this.visible) return;
+        if (!this.visible) return;
 
         this.drawGrid(renderer);
         this.drawNodes(renderer);
 
         this.drawSelectionBox(renderer);
+
+        const keysDown = Input.getKeysDown();
+
+        const keysDownString = [...keysDown].join(" + ");
+
+        this.workspaceSidebar.draw(renderer);
+
+        renderer.text(
+            keysDownString,
+            new Vector2(
+                -window.innerWidth / 2 + 10,
+                window.innerHeight / 2 - 30
+            )
+        );
     }
 }
 
@@ -1205,10 +1301,14 @@ FILE: .\src\core\WorkspaceBrowser.ts
 import { WorkspaceManager } from "./WorkspaceManager";
 import { Renderer } from "./Renderer";
 import { Vector2 } from "../services/Vector2";
+import { Input } from "./Input";
+import { WorkspaceCard } from "./WorkspaceCard";
 
 export class WorkspaceBrowser {
     private visible: boolean = true;
     private position = new Vector2(0, 0);
+    private createButtonPosition = new Vector2(0, 0);
+    private cards: WorkspaceCard[] = [];
 
     private size = new Vector2(600, 400);
 
@@ -1216,7 +1316,17 @@ export class WorkspaceBrowser {
         private workspaceManager: WorkspaceManager
     ) { }
 
+    private rebuildCards() {
+        const workspaces = this.workspaceManager.getWorkspaces();
+
+        this.cards = [];
+        for (let i = 0; i < workspaces.length; i++) {
+            this.cards.push(new WorkspaceCard(workspaces[i], this.position.add(new Vector2(140 + i * 120, 20))));
+        }
+    }
+
     open() {
+        this.rebuildCards();
         this.visible = true;
     }
 
@@ -1225,11 +1335,20 @@ export class WorkspaceBrowser {
     }
 
     toggle() {
-        this.visible = !this.visible;
+        if (this.visible) {
+            this.close();
+            return;
+        }
+
+        this.open();
     }
 
     setPosition(position: Vector2) {
         this.position = position;
+
+        if (this.visible) {
+            this.rebuildCards();
+        }
     }
 
     getSize(): Vector2 {
@@ -1241,13 +1360,44 @@ export class WorkspaceBrowser {
     }
 
     update() {
+        if (!this.visible) {
+            return;
+        }
 
+        if (!Input.isMousePressed(0)) {
+            return;
+        }
+
+        const mouse = Input.mousePosition;
+
+        const hoveringCreateButton =
+            mouse.x >= this.createButtonPosition.x &&
+            mouse.x <= this.createButtonPosition.x + 100 &&
+            mouse.y >= this.createButtonPosition.y &&
+            mouse.y <= this.createButtonPosition.y + 100;
+
+        if (hoveringCreateButton) {
+            const workspaceCount = this.workspaceManager.getWorkspaces().length;
+            const workspace = this.workspaceManager.createWorkspace(
+                `Workspace ${workspaceCount + 1}`
+            );
+
+            this.workspaceManager.setActiveWorkspace(workspace);
+            this.close();
+            return;
+        }
+
+        for (const card of this.cards) {
+            if (card.contains(mouse)) {
+                this.workspaceManager.setActiveWorkspace(card.workspace);
+
+                this.close();
+                return;
+            }
+        }
     }
 
     draw(renderer: Renderer) {
-
-        console.log("WorkspaceBrowser draw");
-
         if (!this.visible) {
             return;
         }
@@ -1260,22 +1410,48 @@ export class WorkspaceBrowser {
             1
         );
 
-        const createButtonPos = this.position.add(new Vector2(20, 20));
+        this.createButtonPosition = this.position.add(new Vector2(20, 20));
 
-        renderer.rect(createButtonPos, new Vector2(100, 100));
-        renderer.text("+", createButtonPos.add(new Vector2(45, 55)));
+        renderer.rect(this.createButtonPosition, new Vector2(100, 100));
+        renderer.text("+", this.createButtonPosition.add(new Vector2(45, 55)));
 
-        const workspaces = this.workspaceManager.getWorkspaces();
-
-        for (let i = 0; i < workspaces.length; i++) {
-            const cardPos = this.position.add(new Vector2(140 + i * 120, 20));
-            renderer.rect(cardPos, new Vector2(100, 100));
-            renderer.text(workspaces[i].name, cardPos.add(new Vector2(10, 120)));
+        for (const card of this.cards) {
+            card.draw(renderer);
         }
 
         // Tegn baggrund
         // Tegn [+]
         // Tegn workspace previews
+    }
+}
+
+
+FILE: .\src\core\WorkspaceCard.ts
+============================================================
+import { Renderer } from "./Renderer";
+import { Vector2 } from "../services/Vector2";
+import { Workspace } from "./Workspace";
+
+export class WorkspaceCard {
+    constructor(
+        public workspace: Workspace,
+        public position: Vector2,
+        public size: Vector2 = new Vector2(100, 100)
+    ) {}
+
+    contains(point: Vector2): boolean {
+        return (
+            point.x >= this.position.x &&
+            point.x <= this.position.x + this.size.x &&
+            point.y >= this.position.y &&
+            point.y <= this.position.y + this.size.y
+        );
+    }
+
+    draw(renderer: Renderer) {
+        renderer.rect(this.position, this.size);
+
+        renderer.text(this.workspace.name, this.position.add(new Vector2(10, 120)));
     }
 }
 
@@ -1291,66 +1467,152 @@ export class WorkspaceManager {
     private activeWorkspace: Workspace;
 
     constructor() {
+        const workspace = new Workspace("Workspace Template");
 
-        const workspace =
-            new Workspace("Workspace");
+        this.workspaces.push(workspace);
 
-        this.workspaces.push(
-            workspace
-        );
-
-        this.activeWorkspace =
-            workspace;
+        this.activeWorkspace = workspace;
     }
 
     getActiveWorkspace(): Workspace {
-
         return this.activeWorkspace;
     }
 
-    setActiveWorkspace(
-        workspace: Workspace
-    ) {
-
-        this.activeWorkspace =
-            workspace;
+    setActiveWorkspace(workspace: Workspace) {
+        workspace.activate()
+        this.activeWorkspace = workspace;
     }
 
     getWorkspaces(): Workspace[] {
-
         return this.workspaces;
     }
 
-    createWorkspace(
-        name: string
-    ): Workspace {
-
-        const workspace =
-            new Workspace(name);
-
-        this.workspaces.push(
-            workspace
-        );
+    createWorkspace(name: string): Workspace {
+        const workspace = new Workspace(name);
+        this.workspaces.push(workspace);
 
         return workspace;
     }
 
-    removeWorkspace(
-        workspace: Workspace
-    ) {
-
-        const index =
-            this.workspaces.indexOf(
-                workspace
-            );
-
+    removeWorkspace(workspace: Workspace) {
+        const index = this.workspaces.indexOf(workspace);
         if (index !== -1) {
-
-            this.workspaces.splice(
-                index,
-                1
-            );
+            this.workspaces.splice(index, 1);
         }
+    }
+}
+
+
+FILE: .\src\core\WorkspaceSidebar.ts
+============================================================
+import { Renderer } from "./Renderer";
+import { Input } from "./Input";
+import { Vector2 } from "../services/Vector2";
+import { SidebarNode } from "../types/SidebarNode";
+import { Node } from "../types/Node";
+
+export class WorkspaceSidebar {
+    private visible = false;
+    private size: Vector2 = new Vector2(250, window.innerHeight - 25)
+
+    private openPosition: Vector2 = new Vector2(-window.innerWidth / 2, -(window.innerHeight / 2))
+    private closePosition: Vector2 = new Vector2((-window.innerWidth / 2) - this.size.x, -(window.innerHeight / 2))
+
+    private position: Vector2 = this.closePosition
+
+    private NodeTemplate: SidebarNode
+    private mouseInside: boolean = false;
+    private draggingTemplate = false;
+    private dragOffset: Vector2 = new Vector2(0, 0);
+
+    constructor(private onCreateNode: (node: Node) => void) {
+        this.NodeTemplate = new SidebarNode(new Vector2(0, 0), new Vector2(200, 150), "Node")
+    }
+
+    private getMouseScreen(): Vector2 {
+        return new Vector2(
+            Input.mousePosition.x - window.innerWidth / 2,
+            Input.mousePosition.y - window.innerHeight / 2
+        );
+    }
+
+    containsPoint(point: Vector2): boolean {
+        return (
+            point.x >= this.position.x &&
+            point.x <= this.position.x + this.size.x &&
+            point.y >= this.position.y &&
+            point.y <= this.position.y + this.size.y
+        );
+    }
+
+    open() {
+        this.visible = true;
+    }
+
+    close() {
+        this.visible = false;
+    }
+
+    toggle() {
+        this.visible = !this.visible;
+    }
+
+    hover(bool: boolean) {
+        this.mouseInside = bool;
+    }
+
+    isMouseInside() {
+        return this.mouseInside;
+    }
+
+    update(dt: number) {
+        this.size.y = window.innerHeight - 25;
+        this.openPosition = new Vector2(-window.innerWidth / 2, -(window.innerHeight / 2))
+        this.closePosition = new Vector2((-window.innerWidth / 2) - this.size.x, -(window.innerHeight / 2))
+
+        this.closePosition.x = (-window.innerWidth / 2) - this.size.x;
+
+        if (Input.isKeyPressed("Tab")) {
+            this.toggle();
+        }
+
+        if (this.visible) {
+            this.position = this.position.lerp(this.openPosition, 20 * dt)
+        } else {
+            this.position = this.position.lerp(this.closePosition, 20 * dt)
+        }
+
+        let SidebarPosition = this.position.copy()
+        this.NodeTemplate.move(SidebarPosition.add(new Vector2(20, 25)));
+
+        const mousePosition = this.getMouseScreen();
+        if (this.NodeTemplate.containsPoint(mousePosition) && Input.isMousePressed(0)) {
+            console.log("START DRAG");
+            this.draggingTemplate = true;
+            this.dragOffset = mousePosition.sub(this.NodeTemplate.position);
+            this.NodeTemplate.startDrag();
+        }
+
+        if (this.draggingTemplate && Input.isMouseReleased(0)) {
+            console.log("STOP DRAG");
+            this.draggingTemplate = false;
+            this.NodeTemplate.stopDrag();
+
+            const mousePosition = this.getMouseScreen()
+            const draggedPosition = mousePosition.sub(this.dragOffset!);
+            const node = new Node(draggedPosition, new Vector2(200, 150), "Node");
+
+            this.onCreateNode(node);
+        }
+    }
+
+    draw(renderer: Renderer) {
+        renderer.rect(this.position, this.size);
+
+        const mousePosition = this.getMouseScreen()
+        const draggedPosition = mousePosition.sub(this.dragOffset!);
+
+        this.NodeTemplate.draw(renderer, draggedPosition);
     }
 }
 
@@ -1610,7 +1872,7 @@ export class TweenService {
 FILE: .\src\services\Vector2.ts
 ============================================================
 export class Vector2 {
-    constructor(public x: number, public y: number) {}
+    constructor(public x: number, public y: number) { }
 
     add(other: Vector2): Vector2 {
         return new Vector2(this.x + other.x, this.y + other.y);
@@ -1666,6 +1928,13 @@ export class Vector2 {
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
         return new Vector2(this.x * cos - this.y * sin, this.x * sin + this.y * cos);
+    }
+
+    lerp(other: Vector2, t: number): Vector2 {
+        return new Vector2(
+            this.x + (other.x - this.x) * t,
+            this.y + (other.y - this.y) * t
+        );
     }
 
     static zero(): Vector2 {
@@ -1750,6 +2019,96 @@ export class Node {
 
     move(position: Vector2) {
         this.position = position;
+    }
+}
+
+
+FILE: .\src\types\SidebarNode.ts
+============================================================
+import { Vector2 } from "../services/Vector2";
+import { Settings } from "../core/config/Settings";
+import { Renderer } from "../core/Renderer";
+import { Node } from "./Node";
+
+export enum NodeState {
+    Normal,
+    Hovered,
+    Selected,
+    Dragged
+}
+
+export class SidebarNode {
+    state: NodeState;
+    constructor(public position: Vector2, public size: Vector2, public title: string) {
+        this.state = NodeState.Normal;
+    }
+
+    containsPoint(point: Vector2): boolean {
+        return (
+            point.x >= this.position.x &&
+            point.x <= this.position.x + this.size.x &&
+            point.y >= this.position.y &&
+            point.y <= this.position.y + this.size.y
+        );
+    }
+
+    draw(renderer: Renderer, draggingPosition: Vector2) {
+        let backgroundColor = Settings.Theme.Node.Background;
+        let borderColor = Settings.Theme.Node.Border;
+
+        if (this.state === NodeState.Selected) {
+            backgroundColor = Settings.Theme.Node.SelectedBackground;
+            borderColor = Settings.Theme.Node.SelectedBorder;
+        }
+
+        if (this.state === NodeState.Hovered) {
+            backgroundColor = Settings.Theme.Node.HoverBackground;
+            borderColor = Settings.Theme.Node.HoverBorder;
+        }
+
+        renderer.rect(this.position, this.size, backgroundColor, borderColor);
+        renderer.text(this.title, this.position.add(new Vector2(10, 20)), 14, Settings.Theme.Node.Text);
+
+        if (this.state == NodeState.Dragged) {
+            renderer.rect(draggingPosition, this.size, backgroundColor, borderColor, 10);
+            renderer.text(this.title, draggingPosition.add(new Vector2(10, 20)), 14, Settings.Theme.Node.Text);
+        }
+    }
+
+    select() {
+        this.state = NodeState.Selected;
+    }
+
+    deselect() {
+        this.state = NodeState.Normal;
+    }
+
+    hover() {
+        if (this.state !== NodeState.Selected) {
+            this.state = NodeState.Hovered;
+        }
+    }
+
+    unhover() {
+        if (this.state === NodeState.Hovered) {
+            this.state = NodeState.Normal;
+        }
+    }
+
+    startDrag() {
+        this.state = NodeState.Dragged;
+    }
+
+    stopDrag() {
+        this.state = NodeState.Normal;
+    }
+
+    isDragging(): boolean {
+        return this.state === NodeState.Dragged;
+    }
+
+    move(position: Vector2) {
+        this.position = position
     }
 }
 

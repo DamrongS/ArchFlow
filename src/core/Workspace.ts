@@ -4,10 +4,12 @@ import { Vector2 } from "../services/Vector2";
 import { Input } from "./Input";
 import { Settings } from "./config/Settings";
 import { Node } from "../types/Node";
+import { WorkspaceSidebar } from "./WorkspaceSidebar";
 
 export class Workspace {
     camera: Camera;
     nodes: Node[] = [];
+    workspaceSidebar: WorkspaceSidebar;
 
     private visible = false;
     private dragStartWorld: Vector2 | null = null;
@@ -24,9 +26,12 @@ export class Workspace {
     private selectionEnd: Vector2 | null = null;
 
     private isSelecting = false;
+    private returning = false;
+    private focusing = false;
 
     constructor(public name: string) {
         this.camera = new Camera();
+        this.workspaceSidebar = new WorkspaceSidebar(this.addNode.bind(this));
 
         //this.nodes.push(
         // new Node(new Vector2(0, 0), new Vector2(200, 150), "Node"),
@@ -44,6 +49,10 @@ export class Workspace {
 
     screenToWorld(position: Vector2): Vector2 {
         return position.div(this.camera.zoom).add(this.camera.position);
+    }
+
+    addNode(node: Node) {
+        this.nodes.push(node);
     }
 
     get selectedNode(): Node | null {
@@ -105,11 +114,16 @@ export class Workspace {
     updateZoom() {
         const mouseScreen = this.getMouseScreen();
         const mouseWorldBefore = this.screenToWorld(mouseScreen);
-        const zoomSpeed = Settings.Camera.ZoomSpeed;
+        const zoomSpeed = Settings.Camera.ZoomSpeed * this.camera.zoom;
+
         if (Input.wheelDelta > 0) {
+            this.returning = false;
+            this.focusing = false;
             this.camera.zoom -= zoomSpeed;
         }
         if (Input.wheelDelta < 0) {
+            this.returning = false;
+            this.focusing = false;
             this.camera.zoom += zoomSpeed;
         }
 
@@ -199,7 +213,7 @@ export class Workspace {
             this.deleteSelectedNodes();
         }
 
-        if (Input.isMousePressed(0) && !this.hoveredNode) {
+        if (Input.isMousePressed(0) && !this.hoveredNode && !this.workspaceSidebar.isMouseInside()) {
             this.isSelecting = true;
             this.selectionStart = this.getMouseWorld();
 
@@ -279,6 +293,7 @@ export class Workspace {
     }
 
     private drawSelectionBox(renderer: Renderer) {
+
         if (!this.isSelecting || !this.selectionStart || !this.selectionEnd) {
             return;
         }
@@ -312,10 +327,42 @@ export class Workspace {
         const currentWorld = this.screenToWorld(mouseScreen);
 
         this.camera.position = this.camera.position.add(this.dragStartWorld!.sub(currentWorld));
+        this.returning = false
+        this.focusing = false;
     }
 
     update(dt: number) {
         if (!this.visible) return;
+
+        if (Input.isKeyPressed("Space")) {
+            if (Input.isKeyDown("ControlLeft")) {
+                this.focusing = true;
+                this.returning = true;
+
+            } else if (Input.isKeyDown("ShiftLeft")) {
+                this.focusing = true;
+
+            } else {
+                this.returning = true;
+
+            }
+        }
+
+        if (this.returning) {
+            this.camera.position = this.camera.position.lerp(new Vector2(0, 0), 10 * dt);
+            if (this.camera.position.distanceTo(Vector2.zero()) < 0.1) {
+                this.camera.position = Vector2.zero();
+                this.returning = false;
+            }
+        }
+
+        if(this.focusing) {
+            this.camera.zoom = this.camera.zoom + (1 - this.camera.zoom) * 10 * dt;
+            if (this.camera.zoom > 0.999 && this.camera.zoom < 1.001) {
+                this.camera.zoom = 1;
+                this.focusing = false;
+            }
+        }
 
         this.updateZoom();
         this.updateCamera();
@@ -323,6 +370,15 @@ export class Workspace {
         this.updateHover();
         this.updateSelection();
         this.updateNodeDragging();
+
+        this.workspaceSidebar.update(dt);
+
+        const mouseScreen = this.getMouseScreen();
+        if (this.workspaceSidebar.containsPoint(mouseScreen)) {
+            this.workspaceSidebar.hover(true)
+        } else {
+            this.workspaceSidebar.hover(false)
+        }
     }
 
     private drawGrid(renderer: Renderer) {
@@ -379,5 +435,19 @@ export class Workspace {
         this.drawNodes(renderer);
 
         this.drawSelectionBox(renderer);
+
+        const keysDown = Input.getKeysDown();
+
+        const keysDownString = [...keysDown].join(" + ");
+
+        this.workspaceSidebar.draw(renderer);
+
+        renderer.text(
+            keysDownString,
+            new Vector2(
+                -window.innerWidth / 2 + 10,
+                window.innerHeight / 2 - 30
+            )
+        );
     }
 }

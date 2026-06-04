@@ -1,5 +1,5 @@
 export class Vector2 {
-    constructor(public x: number, public y: number) {}
+    constructor(public x: number, public y: number) { }
 
     add(other: Vector2): Vector2 {
         return new Vector2(this.x + other.x, this.y + other.y);
@@ -55,6 +55,13 @@ export class Vector2 {
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
         return new Vector2(this.x * cos - this.y * sin, this.x * sin + this.y * cos);
+    }
+
+    lerp(other: Vector2, t: number): Vector2 {
+        return new Vector2(
+            this.x + (other.x - this.x) * t,
+            this.y + (other.y - this.y) * t
+        );
     }
 
     static zero(): Vector2 {

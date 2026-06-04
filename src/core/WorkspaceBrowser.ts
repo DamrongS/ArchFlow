@@ -2,11 +2,13 @@ import { WorkspaceManager } from "./WorkspaceManager";
 import { Renderer } from "./Renderer";
 import { Vector2 } from "../services/Vector2";
 import { Input } from "./Input";
+import { WorkspaceCard } from "./WorkspaceCard";
 
 export class WorkspaceBrowser {
     private visible: boolean = true;
     private position = new Vector2(0, 0);
     private createButtonPosition = new Vector2(0, 0);
+    private cards: WorkspaceCard[] = [];
 
     private size = new Vector2(600, 400);
 
@@ -14,7 +16,17 @@ export class WorkspaceBrowser {
         private workspaceManager: WorkspaceManager
     ) { }
 
+    private rebuildCards() {
+        const workspaces = this.workspaceManager.getWorkspaces();
+
+        this.cards = [];
+        for (let i = 0; i < workspaces.length; i++) {
+            this.cards.push(new WorkspaceCard(workspaces[i], this.position.add(new Vector2(140 + i * 120, 20))));
+        }
+    }
+
     open() {
+        this.rebuildCards();
         this.visible = true;
     }
 
@@ -23,11 +35,20 @@ export class WorkspaceBrowser {
     }
 
     toggle() {
-        this.visible = !this.visible;
+        if (this.visible) {
+            this.close();
+            return;
+        }
+
+        this.open();
     }
 
     setPosition(position: Vector2) {
         this.position = position;
+
+        if (this.visible) {
+            this.rebuildCards();
+        }
     }
 
     getSize(): Vector2 {
@@ -55,16 +76,25 @@ export class WorkspaceBrowser {
             mouse.y >= this.createButtonPosition.y &&
             mouse.y <= this.createButtonPosition.y + 100;
 
-        if (!hoveringCreateButton) {
+        if (hoveringCreateButton) {
+            const workspaceCount = this.workspaceManager.getWorkspaces().length;
+            const workspace = this.workspaceManager.createWorkspace(
+                `Workspace ${workspaceCount + 1}`
+            );
+
+            this.workspaceManager.setActiveWorkspace(workspace);
+            this.close();
             return;
         }
 
-        const workspaceCount = this.workspaceManager.getWorkspaces().length;
-        const workspace = this.workspaceManager.createWorkspace(`Workspace ${workspaceCount + 1}`);
+        for (const card of this.cards) {
+            if (card.contains(mouse)) {
+                this.workspaceManager.setActiveWorkspace(card.workspace);
 
-        this.workspaceManager.setActiveWorkspace(workspace);
-
-        this.close();
+                this.close();
+                return;
+            }
+        }
     }
 
     draw(renderer: Renderer) {
@@ -85,12 +115,8 @@ export class WorkspaceBrowser {
         renderer.rect(this.createButtonPosition, new Vector2(100, 100));
         renderer.text("+", this.createButtonPosition.add(new Vector2(45, 55)));
 
-        const workspaces = this.workspaceManager.getWorkspaces();
-
-        for (let i = 0; i < workspaces.length; i++) {
-            const cardPos = this.position.add(new Vector2(140 + i * 120, 20));
-            renderer.rect(cardPos, new Vector2(100, 100));
-            renderer.text(workspaces[i].name, cardPos.add(new Vector2(10, 120)));
+        for (const card of this.cards) {
+            card.draw(renderer);
         }
 
         // Tegn baggrund
