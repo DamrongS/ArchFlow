@@ -209,7 +209,7 @@ export class Workspace {
     }
 
     private updateSelection() {
-        if (Input.isKeyPressed("Backspace")) {
+        if (Input.isKeyPressed("Backspace") || Input.isKeyPressed("Delete")) {
             this.deleteSelectedNodes();
         }
 
@@ -334,18 +334,23 @@ export class Workspace {
     update(dt: number) {
         if (!this.visible) return;
 
-        if (Input.isKeyPressed("Space")) {
-            if (Input.isKeyDown("ControlLeft")) {
-                this.focusing = true;
-                this.returning = true;
+        if (Input.isAllKeybindsPressed(Settings.Keybinds.ResetZoomAndFocus)) {
+            this.focusing = true;
+            this.returning = true;
 
-            } else if (Input.isKeyDown("ShiftLeft")) {
-                this.focusing = true;
+            return;
+        }
 
-            } else {
-                this.returning = true;
+        if (Input.isAllKeybindsPressed(Settings.Keybinds.ResetZoom)) {
+            this.focusing = true;
 
-            }
+            return;
+        }
+
+        if (Input.isKeybindsPressed(Settings.Keybinds.FocusWorkspace)) {
+            this.returning = true;
+
+            return;
         }
 
         if (this.returning) {
@@ -356,7 +361,7 @@ export class Workspace {
             }
         }
 
-        if(this.focusing) {
+        if (this.focusing) {
             this.camera.zoom = this.camera.zoom + (1 - this.camera.zoom) * 10 * dt;
             if (this.camera.zoom > 0.999 && this.camera.zoom < 1.001) {
                 this.camera.zoom = 1;
@@ -371,7 +376,7 @@ export class Workspace {
         this.updateSelection();
         this.updateNodeDragging();
 
-        this.workspaceSidebar.update(dt);
+        this.workspaceSidebar.update(dt, this.camera);
 
         const mouseScreen = this.getMouseScreen();
         if (this.workspaceSidebar.containsPoint(mouseScreen)) {
@@ -419,20 +424,20 @@ export class Workspace {
         }
     }
 
-    drawNodes(renderer: Renderer) {
+    drawNodes(renderer: Renderer, dt) {
         for (const node of this.nodes) {
             const screenPos = this.worldToScreen(node.position);
 
-            node.draw(renderer, screenPos, this.camera.zoom);
+            node.draw(renderer, screenPos, this.camera.zoom, dt);
         }
     }
 
 
-    draw(renderer: Renderer) {
+    draw(renderer: Renderer, dt) {
         if (!this.visible) return;
 
         this.drawGrid(renderer);
-        this.drawNodes(renderer);
+        this.drawNodes(renderer, dt);
 
         this.drawSelectionBox(renderer);
 

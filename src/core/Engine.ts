@@ -73,7 +73,7 @@ export class Engine {
 
         this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
 
-        this.workspaceManager.getActiveWorkspace().draw(this.renderer);
+        this.workspaceManager.getActiveWorkspace().draw(this.renderer, deltaTime);
 
         this.ctx.restore();
 

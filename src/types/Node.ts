@@ -5,17 +5,25 @@ import { Settings } from "../core/config/Settings";
 export enum NodeState {
     Normal,
     Hovered,
-    Selected
+    Selected,
+    Spawning
 }
 
 export class Node {
     state: NodeState;
+    private currentSize: Vector2;
+    private spawnTime = 0;
+    private spawnDuration = 0.25;
     constructor(
         public position: Vector2,
         public size: Vector2,
-        public title: string
+        public title: string,
+        public fromSize: Vector2 = size
     ) {
-        this.state = NodeState.Normal;
+        this.state = NodeState.Spawning;
+        this.currentSize = this.fromSize.copy();
+        this.spawnTime = 0;
+        this.spawnDuration = 0.15;
     }
 
     containsPoint(point: Vector2): boolean {
@@ -27,7 +35,7 @@ export class Node {
         );
     }
 
-    draw(renderer: Renderer, position: Vector2, cameraZoom: number = 1) {
+    draw(renderer: Renderer, position: Vector2, cameraZoom: number = 1, dt: number) {
         let backgroundColor = Settings.Theme.Node.Background;
         let borderColor = Settings.Theme.Node.Border;
 
@@ -41,8 +49,27 @@ export class Node {
             borderColor = Settings.Theme.Node.HoverBorder;
         }
 
-        renderer.rect(position, this.size.mult(cameraZoom), backgroundColor, borderColor, 10 * cameraZoom);
-        renderer.text(this.title, position.add(new Vector2(10 * cameraZoom, 20 * cameraZoom)), 14, Settings.Theme.Node.Text, cameraZoom);
+        if (this.state === NodeState.Spawning) {
+            this.spawnTime += dt;
+
+            const t = Math.min(this.spawnTime / this.spawnDuration, 1);
+
+            this.currentSize = this.fromSize.lerp(this.size.mult(cameraZoom), t);
+
+            if (t >= 1) {
+                this.state = NodeState.Normal;
+            }
+
+            renderer.rect(position, this.currentSize, backgroundColor, borderColor, 10 * cameraZoom);
+            renderer.text(this.title, position.add(new Vector2(10 * cameraZoom, 20 * cameraZoom)), 14, Settings.Theme.Node.Text, cameraZoom);
+
+        } else {
+            renderer.rect(position, this.size.mult(cameraZoom), backgroundColor, borderColor, 10 * cameraZoom);
+            renderer.text(this.title, position.add(new Vector2(10 * cameraZoom, 20 * cameraZoom)), 14, Settings.Theme.Node.Text, cameraZoom);
+        }
+
+        console.log(this.state);
+
     }
 
     setPosition(newPosition: Vector2) {
@@ -58,12 +85,14 @@ export class Node {
     }
 
     hover() {
+        if (this.state == NodeState.Spawning) return
         if (this.state !== NodeState.Selected) {
             this.state = NodeState.Hovered;
         }
     }
 
     unhover() {
+        if (this.state == NodeState.Spawning) return
         if (this.state === NodeState.Hovered) {
             this.state = NodeState.Normal;
         }

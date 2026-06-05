@@ -17,4 +17,20 @@ export const Settings = {
         MaxZoom: 4,
         ZoomSpeed: 0.1,
     },
+
+    Keybinds: {
+        ToggleSidebar: ["Tab"],
+
+        FocusWorkspace: ["Space"],
+
+        ResetZoom: [
+            "ShiftLeft",
+            "Space"
+        ],
+
+        ResetZoomAndFocus: [
+            "ControlLeft",
+            "Space"
+        ]
+    }
 };

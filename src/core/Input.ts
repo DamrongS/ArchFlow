@@ -107,6 +107,26 @@ export class Input {
         return this.keys
     }
 
+    static isKeybindsPressed(keys: string[]): boolean {
+        for (const key of keys) {
+            if (this.isKeyPressed(key)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    static isAllKeybindsPressed(keys: string[]): boolean {
+        for (const key of keys) {
+            if (!this.isKeyDown(key)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     static endFrame() {
         this.wheelDelta = 0;
         this.pressedButtons.clear();

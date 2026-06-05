@@ -3,6 +3,7 @@ import { Input } from "./Input";
 import { Vector2 } from "../services/Vector2";
 import { SidebarNode } from "../types/SidebarNode";
 import { Node } from "../types/Node";
+import { Settings } from "./config/Settings";
 
 export class WorkspaceSidebar {
     private visible = false;
@@ -27,6 +28,14 @@ export class WorkspaceSidebar {
             Input.mousePosition.x - window.innerWidth / 2,
             Input.mousePosition.y - window.innerHeight / 2
         );
+    }
+
+    worldToScreen(position: Vector2): Vector2 {
+        return position.sub(this.camera.position).mult(this.camera.zoom);
+    }
+
+    screenToWorld(position: Vector2): Vector2 {
+        return position.div(this.camera.zoom).add(this.camera.position);
     }
 
     containsPoint(point: Vector2): boolean {
@@ -58,14 +67,14 @@ export class WorkspaceSidebar {
         return this.mouseInside;
     }
 
-    update(dt: number) {
+    update(dt: number, camera: unknown) {
         this.size.y = window.innerHeight - 25;
         this.openPosition = new Vector2(-window.innerWidth / 2, -(window.innerHeight / 2))
         this.closePosition = new Vector2((-window.innerWidth / 2) - this.size.x, -(window.innerHeight / 2))
 
         this.closePosition.x = (-window.innerWidth / 2) - this.size.x;
 
-        if (Input.isKeyPressed("Tab")) {
+        if (Input.isKeybindsPressed(Settings.Keybinds.ToggleSidebar)) {
             this.toggle();
         }
 
@@ -93,7 +102,8 @@ export class WorkspaceSidebar {
 
             const mousePosition = this.getMouseScreen()
             const draggedPosition = mousePosition.sub(this.dragOffset!);
-            const node = new Node(draggedPosition, new Vector2(200, 150), "Node");
+
+            const node = new Node(draggedPosition.div(camera.zoom).add(camera.position), new Vector2(200, 150), "Node", new Vector2(200, 150));
 
             this.onCreateNode(node);
         }
