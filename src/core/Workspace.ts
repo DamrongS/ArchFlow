@@ -80,6 +80,13 @@ export class Workspace {
 
         node.select();
         this.selectedNodes.push(node);
+
+        const index = this.nodes.indexOf(node);
+
+        if (index >= 0) {
+            this.nodes.splice(index, 1);
+            this.nodes.push(node);
+        }
     }
 
     private getMouseScreen(): Vector2 {
@@ -137,7 +144,8 @@ export class Workspace {
         const mouseWorld = this.getMouseWorld();
         let foundHover = false;
 
-        for (const node of this.nodes) {
+        for (let i = this.nodes.length - 1; i >= 0; i--) {
+            const node = this.nodes[i];
             if (!node.containsPoint(mouseWorld)) {
                 continue;
             }

@@ -7,12 +7,12 @@ import { Settings } from "./config/Settings";
 
 export class WorkspaceSidebar {
     private visible = false;
-    private size: Vector2 = new Vector2(250, window.innerHeight - 25)
+    private size: Vector2 = new Vector2(250, window.innerHeight + 15)
 
-    private openPosition: Vector2 = new Vector2(-window.innerWidth / 2, -(window.innerHeight / 2))
-    private closePosition: Vector2 = new Vector2((-window.innerWidth / 2) - this.size.x, -(window.innerHeight / 2))
+    private openPosition: Vector2 = new Vector2((-window.innerWidth / 2), -(window.innerHeight / 2)+15)
+    private closePosition: Vector2 = new Vector2((-window.innerWidth / 2) - (this.size.x + 5), -(window.innerHeight / 2)+15)
 
-    private position: Vector2 = this.closePosition
+    private position: Vector2 = this.closePosition.add(new Vector2(-100, 50))
 
     private NodeTemplate: SidebarNode
     private mouseInside: boolean = false;
@@ -69,8 +69,8 @@ export class WorkspaceSidebar {
 
     update(dt: number, camera: unknown) {
         this.size.y = window.innerHeight - 25;
-        this.openPosition = new Vector2(-window.innerWidth / 2, -(window.innerHeight / 2))
-        this.closePosition = new Vector2((-window.innerWidth / 2) - this.size.x, -(window.innerHeight / 2))
+        this.openPosition = new Vector2((-window.innerWidth / 2), -(window.innerHeight / 2)+5)
+        this.closePosition = new Vector2((-window.innerWidth / 2) - (this.size.x + 5), -(window.innerHeight / 2)+5)
 
         this.closePosition.x = (-window.innerWidth / 2) - this.size.x;
 
@@ -110,7 +110,7 @@ export class WorkspaceSidebar {
     }
 
     draw(renderer: Renderer) {
-        renderer.rect(this.position, this.size);
+        renderer.rect(this.position, this.size, Settings.Theme.Node.Background, Settings.Theme.Node.Border);
 
         const mousePosition = this.getMouseScreen()
         const draggedPosition = mousePosition.sub(this.dragOffset!);

@@ -113,3 +113,13 @@ Systems should be designed to grow without requiring major rewrites.
 
 ## Author
 Christoffer Damrong Blond Schjødt
+
+
+
+
+
+
+ArchFlow is free to use, modify, and extend.
+If you use source code from ArchFlow in a public project, please provide credit.
+Mods, plugins, and extensions are encouraged.
+Do not claim authorship of work that is not your own.
