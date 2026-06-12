@@ -1,5 +1,4 @@
 # ArchFlow
-
 ArchFlow is a visual project architecture and workflow editor built from scratch in TypeScript.
 
 The goal is to create an infinite workspace where ideas, systems, projects, concepts, and relationships can be organized visually through nodes and connections.
@@ -93,10 +92,10 @@ Systems should be designed to grow without requiring major rewrites.
 - Selection system ✅
 - Node Dragging ✅
 - Multi Node Selection ✅
-- Connections
+- Connections ✅
 
 ### Phase 2
-- Drag & Drop
+- Drag & Drop ✅
 - Copy / Paste
 - Undo / Redo
 - Workspace files

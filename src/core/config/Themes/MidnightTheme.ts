@@ -1,27 +1,43 @@
 export const MidnightTheme = {
-    Background: "#0f1220",
+    Background: "#080b16",
 
     Grid: {
-        Minor: "#1b2038",
-        Major: "#2a3157",
+        Minor: "#12182b",
+        Major: "#1d2745",
     },
 
     Node: {
-        Background: "#181d33",
-        Border: "#4d5aa6",
-        Text: "#e8ecff",
+        Background: "#11172b",
+        Border: "#39477f",
+        Text: "#e6ebff",
+
+        HoverBackground: "#18203a",
+        HoverBorder: "#9ba8ff",
+
+        SelectedBackground: "#202b4d",
+        SelectedBorder: "#b5beff",
     },
 
     Selection: {
-        Border: "#7c8cff",
-        Fill: "#7c8cff22",
-        Callback: function(selectedNode: unknown) {
-            console.log("Midnight theme node selected:", selectedNode);
+        Border: "#8fa0ff",
+        Fill: "#8fa0ff22",
+
+        Callback: function (selectedNode: unknown) {
+            console.log(
+                "Midnight theme node selected:",
+                selectedNode
+            );
         }
     },
 
     Accent: {
-        Primary: "#7c8cff",
-        Secondary: "#4d5aa6",
+        Primary: "#8fa0ff",
+        Secondary: "#5668c9",
+    },
+
+    Connection: {
+        Line: "#6f7fcf",
+        Hovered: "#b5beff",
+        Selected: "#d4dbff"
     },
 };

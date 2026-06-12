@@ -5,11 +5,13 @@ import { Input } from "./Input";
 import { Settings } from "./config/Settings";
 import { Node } from "../types/Node";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
+import { Connection } from "../types/Connection"
 
 export class Workspace {
     camera: Camera;
     nodes: Node[] = [];
     workspaceSidebar: WorkspaceSidebar;
+    private connections: Connection[] = [];
 
     private visible = false;
     private dragStartWorld: Vector2 | null = null;
@@ -17,6 +19,9 @@ export class Workspace {
 
     hoveredNode: Node | null = null;
     selectedNodes: Node[] = [];
+
+    private hoveredConnection: Connection | null = null;
+    private selectedConnections: Connection[] = [];
 
     private draggedNodes: Node[] = [];
     private nodeDragStartMouse: Vector2 | null = null;
@@ -55,6 +60,63 @@ export class Workspace {
         this.nodes.push(node);
     }
 
+    private addConnectionToSelection(connection: Connection) {
+        if (this.selectedConnections.includes(connection)) {
+            return;
+        }
+
+        connection.select();
+        this.selectedConnections.push(connection);
+    }
+
+    private removeConnectionFromSelection(connection: Connection) {
+        const index = this.selectedConnections.indexOf(connection);
+
+        if (index < 0) {
+            return;
+        }
+
+        connection.deselect();
+        this.selectedConnections.splice(index, 1);
+    }
+
+    private clearConnectionSelection() {
+        for (const connection of this.selectedConnections) {
+            connection.deselect();
+        }
+
+        this.selectedConnections = [];
+    }
+
+    createConnection(nodes: Node[]) {
+        for (let i = 0; i < nodes.length - 1; i++) {
+            const from = nodes[i];
+            const to = nodes[i + 1];
+
+            const alreadyConnected = this.connections.some(
+                connection =>
+                    (connection.from === from && connection.to === to) ||
+                    (connection.from === to && connection.to === from)
+            );
+
+            if (alreadyConnected) {
+                continue;
+            }
+
+            this.connections.push(
+                new Connection(from, to)
+            );
+        }
+    }
+
+    removeConnection(connection: Connection) {
+        const index = this.connections.indexOf(connection);
+
+        if (index >= 0) {
+            this.connections.splice(index, 1);
+        }
+    }
+
     get selectedNode(): Node | null {
         if (this.selectedNodes.length === 0) {
             return null;
@@ -80,13 +142,15 @@ export class Workspace {
 
         node.select();
         this.selectedNodes.push(node);
+    }
 
+    private bringToFront(node: Node) {
         const index = this.nodes.indexOf(node);
 
-        if (index >= 0) {
-            this.nodes.splice(index, 1);
-            this.nodes.push(node);
-        }
+        if (index < 0) return;
+
+        this.nodes.splice(index, 1);
+        this.nodes.push(node);
     }
 
     private getMouseScreen(): Vector2 {
@@ -113,9 +177,33 @@ export class Workspace {
                     1
                 );
             }
+
+            this.connections = this.connections.filter(
+                connection =>
+                    connection.from !== node &&
+                    connection.to !== node
+            );
         }
 
         this.selectedNodes = [];
+    }
+
+    private deleteSelectedConnections() {
+        if (this.selectedConnections.length === 0) {
+            return;
+        }
+
+        for (const connection of this.selectedConnections) {
+            const index = this.connections.indexOf(connection);
+            if (index >= 0) {
+                this.connections.splice(
+                    index,
+                    1
+                );
+            }
+        }
+
+        this.selectedConnections = [];
     }
 
     updateZoom() {
@@ -142,8 +230,9 @@ export class Workspace {
 
     private updateHover() {
         const mouseWorld = this.getMouseWorld();
-        let foundHover = false;
 
+        // Nodes
+        let foundHover = false;
         for (let i = this.nodes.length - 1; i >= 0; i--) {
             const node = this.nodes[i];
             if (!node.containsPoint(mouseWorld)) {
@@ -163,6 +252,36 @@ export class Workspace {
         if (!foundHover && this.hoveredNode) {
             this.hoveredNode.unhover();
             this.hoveredNode = null;
+        }
+
+        if (this.hoveredNode) {
+            this.hoveredConnection?.unhover();
+            this.hoveredConnection = null;
+
+            return;
+        }
+
+        // Connections
+        let foundHoverConnection = false;
+        for (let i = this.connections.length - 1; i >= 0; i--) {
+            const connection = this.connections[i];
+            if (!connection.containsPoint(mouseWorld)) {
+                continue;
+            }
+            foundHoverConnection = true;
+            if (this.hoveredConnection !== connection) {
+                this.hoveredConnection?.unhover();
+
+                connection.hover();
+                this.hoveredConnection = connection;
+            }
+
+            break;
+        }
+
+        if (!foundHoverConnection && this.hoveredConnection) {
+            this.hoveredConnection.unhover();
+            this.hoveredConnection = null;
         }
     }
 
@@ -187,6 +306,7 @@ export class Workspace {
         }
 
         this.clearSelection();
+        this.clearConnectionSelection();
 
         const minX = Math.min(this.selectionStart.x, this.selectionEnd.x);
         const maxX = Math.max(this.selectionStart.x, this.selectionEnd.x);
@@ -210,8 +330,34 @@ export class Workspace {
             const overlapX = Math.min(nodeRight, boxRight) - Math.max(nodeLeft, boxLeft);
             const overlapY = Math.min(nodeBottom, boxBottom) - Math.max(nodeTop, boxTop);
 
-            if (overlapX > 0.1 && overlapY > 0.1) {
+            if (overlapX > 0.01 && overlapY > 0.01) {
                 this.addToSelection(node);
+            }
+        }
+
+        for (const connection of this.connections) {
+            const from = connection.from.position.add(
+                connection.from.size.div(2)
+            );
+
+            const to = connection.to.position.add(
+                connection.to.size.div(2)
+            );
+
+            const fromInside =
+                from.x >= minX &&
+                from.x <= maxX &&
+                from.y >= minY &&
+                from.y <= maxY;
+
+            const toInside =
+                to.x >= minX &&
+                to.x <= maxX &&
+                to.y >= minY &&
+                to.y <= maxY;
+
+            if (fromInside && toInside) {
+                this.addConnectionToSelection(connection);
             }
         }
     }
@@ -219,9 +365,18 @@ export class Workspace {
     private updateSelection() {
         if (Input.isKeyPressed("Backspace") || Input.isKeyPressed("Delete")) {
             this.deleteSelectedNodes();
+            this.deleteSelectedConnections();
         }
 
-        if (Input.isMousePressed(0) && !this.hoveredNode && !this.workspaceSidebar.isMouseInside()) {
+        if (
+            Input.isMousePressed(0) &&
+            !this.hoveredNode &&
+            !this.hoveredConnection &&
+            !this.workspaceSidebar.isMouseInside()
+        ) {
+            this.clearSelection();
+            this.clearConnectionSelection();
+
             this.isSelecting = true;
             this.selectionStart = this.getMouseWorld();
 
@@ -246,8 +401,20 @@ export class Workspace {
             return;
         }
 
-        if (!this.hoveredNode) {
+        if (!this.hoveredNode && !this.hoveredConnection) {
             this.clearSelection();
+            this.clearConnectionSelection();
+            return;
+        }
+
+        if (this.hoveredConnection) {
+            this.clearSelection();
+            this.clearConnectionSelection();
+
+            this.addConnectionToSelection(
+                this.hoveredConnection
+            );
+
             return;
         }
 
@@ -260,8 +427,12 @@ export class Workspace {
             return;
         }
 
+
         this.clearSelection();
+        this.clearConnectionSelection();
+
         this.addToSelection(this.hoveredNode);
+        this.bringToFront(this.hoveredNode);
     }
 
     private updateNodeDragging() {
@@ -361,6 +532,12 @@ export class Workspace {
             return;
         }
 
+        if (Input.isAllKeybindsPressed(Settings.Keybinds.CreateConnection)) {
+            this.createConnection(this.selectedNodes)
+
+            return;
+        }
+
         if (this.returning) {
             this.camera.position = this.camera.position.lerp(new Vector2(0, 0), 10 * dt);
             if (this.camera.position.distanceTo(Vector2.zero()) < 0.1) {
@@ -432,7 +609,7 @@ export class Workspace {
         }
     }
 
-    drawNodes(renderer: Renderer, dt) {
+    drawNodes(renderer: Renderer, dt: number) {
         for (const node of this.nodes) {
             const screenPos = this.worldToScreen(node.position);
 
@@ -440,11 +617,17 @@ export class Workspace {
         }
     }
 
+    drawConnections(renderer: Renderer) {
+        for (const connection of this.connections) {
+            connection.draw(renderer, this.camera);
+        }
+    }
 
-    draw(renderer: Renderer, dt) {
+    draw(renderer: Renderer, dt: number) {
         if (!this.visible) return;
 
         this.drawGrid(renderer);
+        this.drawConnections(renderer);
         this.drawNodes(renderer, dt);
 
         this.drawSelectionBox(renderer);

@@ -10,12 +10,16 @@ export const BlueprintTheme = {
         Background: "#3057E1",
         Border: "#CED8F7",
         Text: "#CED8F7",
+        HoverBackground: "#0a0c16",
+        HoverBorder: "rgb(193, 198, 255)",
+        SelectedBackground: "#1e2543",
+        SelectedBorder: "#7181dc",
     },
 
     Selection: {
         Border: "#CED8F7",
         Fill: "#CED8F722",
-        Callback: function(selectedNode: unknown) {
+        Callback: function (selectedNode: unknown) {
             console.log("Blueprint theme node selected:", selectedNode);
         }
     },
@@ -23,5 +27,11 @@ export const BlueprintTheme = {
     Accent: {
         Primary: "#CED8F7",
         Secondary: "#4A6DE5",
+    },
+
+    Connection: {
+        Line: "#ffffff",
+        Selected: "#ff5930",
+        Hovered: "#ffa7a7"
     },
 };

@@ -6,14 +6,16 @@ export class Renderer {
 
     }
 
-    line(start: Vector2, end: Vector2, color: string = Settings.Theme.Grid.Minor) {
+    line(start: Vector2, end: Vector2, color: string = Settings.Theme.Grid.Minor, width: number = 1) {
         this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = width;
+
         this.ctx.beginPath();
         this.ctx.moveTo(start.x, start.y);
-
         this.ctx.lineTo(end.x, end.y);
-        
         this.ctx.stroke();
+
+        this.ctx.lineWidth = 1;
     }
 
     rect(position: Vector2, size: Vector2, color: string = Settings.Theme.Node.Background, border: string = Settings.Theme.Node.Border, borderRadius: number = 0) {

@@ -19,8 +19,14 @@ export const DarkTheme = {
     Selection: {
         Border: "#4f9fff",
         Fill: "#4f9fff22",
-        Callback: function(selectedNode: unknown) {
+        Callback: function (selectedNode: unknown) {
             console.log("Dark theme node selected:", selectedNode);
         }
+    },
+
+    Connection: {
+        Line: "#ffffff",
+        Selected: "#3094ff",
+        Hovered: "#a7ccff"
     },
 };

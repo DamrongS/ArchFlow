@@ -70,9 +70,9 @@ export class WorkspaceSidebar {
     update(dt: number, camera: unknown) {
         this.size.y = window.innerHeight - 25;
         this.openPosition = new Vector2((-window.innerWidth / 2), -(window.innerHeight / 2)+5)
-        this.closePosition = new Vector2((-window.innerWidth / 2) - (this.size.x + 5), -(window.innerHeight / 2)+5)
+        this.closePosition = new Vector2((-window.innerWidth / 2) - (this.size.x + 6), -(window.innerHeight / 2)+5)
 
-        this.closePosition.x = (-window.innerWidth / 2) - this.size.x;
+        this.closePosition.x = (-window.innerWidth / 2) - (this.size.x+6);
 
         if (Input.isKeybindsPressed(Settings.Keybinds.ToggleSidebar)) {
             this.toggle();

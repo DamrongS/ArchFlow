@@ -31,6 +31,11 @@ export const Settings = {
         ResetZoomAndFocus: [
             "ControlLeft",
             "Space"
+        ],
+
+        CreateConnection: [
+            "ShiftLeft",
+            "KeyC"
         ]
     }
 };

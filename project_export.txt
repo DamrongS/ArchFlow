@@ -54,6 +54,48 @@ FILE: .\index.html
 
 
 
+FILE: .\LICENSE
+============================================================
+ArchFlow License v1.0
+
+Copyright (c) 2026 Christoffer Damrong Blond Schjødt
+
+Permission is granted to use, modify, distribute, and create extensions, plugins, mods, and derivative works based on ArchFlow.
+
+The following conditions apply:
+
+1. Attribution
+   If you use any part of the ArchFlow source code in a public project, repository, video, article, tutorial, or released software, you must provide reasonable credit to the original project and author.
+
+2. No False Attribution
+   You may not claim authorship of code, assets, systems, or designs created by others. Credit must be given where appropriate.
+
+3. Mods and Extensions
+   Creating, sharing, and distributing mods, plugins, extensions, and custom content for ArchFlow is explicitly permitted.
+
+4. Modification
+   You may modify the source code for personal, educational, commercial, or non-commercial purposes.
+
+5. Redistribution
+   You may redistribute modified or unmodified versions of ArchFlow, provided that this license and copyright notice remain included.
+
+6. Honesty
+   Do not intentionally misrepresent the origin of ArchFlow or any substantial portion of its source code.
+
+7. Warranty
+   The software is provided "as is", without warranty of any kind. The authors are not liable for any damages arising from its use.
+
+In short:
+- Use it.
+- Modify it.
+- Make mods for it.
+- Learn from it.
+- Share it.
+- Build commercial projects with it.
+- Give credit where credit is due.
+- Do not claim other people's work as your own.
+
+
 FILE: .\package.json
 ============================================================
 {
@@ -93,7 +135,6 @@ FILE: .\project_export.txt
 FILE: .\README.md
 ============================================================
 # ArchFlow
-
 ArchFlow is a visual project architecture and workflow editor built from scratch in TypeScript.
 
 The goal is to create an infinite workspace where ideas, systems, projects, concepts, and relationships can be organized visually through nodes and connections.
@@ -187,10 +228,10 @@ Systems should be designed to grow without requiring major rewrites.
 - Selection system ✅
 - Node Dragging ✅
 - Multi Node Selection ✅
-- Connections
+- Connections ✅
 
 ### Phase 2
-- Drag & Drop
+- Drag & Drop ✅
 - Copy / Paste
 - Undo / Redo
 - Workspace files
@@ -207,6 +248,16 @@ Systems should be designed to grow without requiring major rewrites.
 
 ## Author
 Christoffer Damrong Blond Schjødt
+
+
+
+
+
+
+ArchFlow is free to use, modify, and extend.
+If you use source code from ArchFlow in a public project, please provide credit.
+Mods, plugins, and extensions are encouraged.
+Do not claim authorship of work that is not your own.
 
 
 FILE: .\tsconfig.json
@@ -668,7 +719,7 @@ export class Engine {
 
         this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
 
-        this.workspaceManager.getActiveWorkspace().draw(this.renderer);
+        this.workspaceManager.getActiveWorkspace().draw(this.renderer, deltaTime);
 
         this.ctx.restore();
 
@@ -790,6 +841,26 @@ export class Input {
         return this.keys
     }
 
+    static isKeybindsPressed(keys: string[]): boolean {
+        for (const key of keys) {
+            if (this.isKeyPressed(key)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    static isAllKeybindsPressed(keys: string[]): boolean {
+        for (const key of keys) {
+            if (!this.isKeyDown(key)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     static endFrame() {
         this.wheelDelta = 0;
         this.pressedButtons.clear();
@@ -813,14 +884,16 @@ export class Renderer {
 
     }
 
-    line(start: Vector2, end: Vector2, color: string = Settings.Theme.Grid.Minor) {
+    line(start: Vector2, end: Vector2, color: string = Settings.Theme.Grid.Minor, width: number = 1) {
         this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = width;
+
         this.ctx.beginPath();
         this.ctx.moveTo(start.x, start.y);
-
         this.ctx.lineTo(end.x, end.y);
-        
         this.ctx.stroke();
+
+        this.ctx.lineWidth = 1;
     }
 
     rect(position: Vector2, size: Vector2, color: string = Settings.Theme.Node.Background, border: string = Settings.Theme.Node.Border, borderRadius: number = 0) {
@@ -848,11 +921,13 @@ import { Input } from "./Input";
 import { Settings } from "./config/Settings";
 import { Node } from "../types/Node";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
+import { Connection } from "../types/Connection"
 
 export class Workspace {
     camera: Camera;
     nodes: Node[] = [];
     workspaceSidebar: WorkspaceSidebar;
+    private connections: Connection[] = [];
 
     private visible = false;
     private dragStartWorld: Vector2 | null = null;
@@ -860,6 +935,9 @@ export class Workspace {
 
     hoveredNode: Node | null = null;
     selectedNodes: Node[] = [];
+
+    private hoveredConnection: Connection | null = null;
+    private selectedConnections: Connection[] = [];
 
     private draggedNodes: Node[] = [];
     private nodeDragStartMouse: Vector2 | null = null;
@@ -898,6 +976,63 @@ export class Workspace {
         this.nodes.push(node);
     }
 
+    private addConnectionToSelection(connection: Connection) {
+        if (this.selectedConnections.includes(connection)) {
+            return;
+        }
+
+        connection.select();
+        this.selectedConnections.push(connection);
+    }
+
+    private removeConnectionFromSelection(connection: Connection) {
+        const index = this.selectedConnections.indexOf(connection);
+
+        if (index < 0) {
+            return;
+        }
+
+        connection.deselect();
+        this.selectedConnections.splice(index, 1);
+    }
+
+    private clearConnectionSelection() {
+        for (const connection of this.selectedConnections) {
+            connection.deselect();
+        }
+
+        this.selectedConnections = [];
+    }
+
+    createConnection(nodes: Node[]) {
+        for (let i = 0; i < nodes.length - 1; i++) {
+            const from = nodes[i];
+            const to = nodes[i + 1];
+
+            const alreadyConnected = this.connections.some(
+                connection =>
+                    (connection.from === from && connection.to === to) ||
+                    (connection.from === to && connection.to === from)
+            );
+
+            if (alreadyConnected) {
+                continue;
+            }
+
+            this.connections.push(
+                new Connection(from, to)
+            );
+        }
+    }
+
+    removeConnection(connection: Connection) {
+        const index = this.connections.indexOf(connection);
+
+        if (index >= 0) {
+            this.connections.splice(index, 1);
+        }
+    }
+
     get selectedNode(): Node | null {
         if (this.selectedNodes.length === 0) {
             return null;
@@ -925,6 +1060,15 @@ export class Workspace {
         this.selectedNodes.push(node);
     }
 
+    private bringToFront(node: Node) {
+        const index = this.nodes.indexOf(node);
+
+        if (index < 0) return;
+
+        this.nodes.splice(index, 1);
+        this.nodes.push(node);
+    }
+
     private getMouseScreen(): Vector2 {
         return new Vector2(
             Input.mousePosition.x - window.innerWidth / 2,
@@ -949,9 +1093,33 @@ export class Workspace {
                     1
                 );
             }
+
+            this.connections = this.connections.filter(
+                connection =>
+                    connection.from !== node &&
+                    connection.to !== node
+            );
         }
 
         this.selectedNodes = [];
+    }
+
+    private deleteSelectedConnections() {
+        if (this.selectedConnections.length === 0) {
+            return;
+        }
+
+        for (const connection of this.selectedConnections) {
+            const index = this.connections.indexOf(connection);
+            if (index >= 0) {
+                this.connections.splice(
+                    index,
+                    1
+                );
+            }
+        }
+
+        this.selectedConnections = [];
     }
 
     updateZoom() {
@@ -978,9 +1146,11 @@ export class Workspace {
 
     private updateHover() {
         const mouseWorld = this.getMouseWorld();
-        let foundHover = false;
 
-        for (const node of this.nodes) {
+        // Nodes
+        let foundHover = false;
+        for (let i = this.nodes.length - 1; i >= 0; i--) {
+            const node = this.nodes[i];
             if (!node.containsPoint(mouseWorld)) {
                 continue;
             }
@@ -998,6 +1168,36 @@ export class Workspace {
         if (!foundHover && this.hoveredNode) {
             this.hoveredNode.unhover();
             this.hoveredNode = null;
+        }
+
+        if (this.hoveredNode) {
+            this.hoveredConnection?.unhover();
+            this.hoveredConnection = null;
+
+            return;
+        }
+
+        // Connections
+        let foundHoverConnection = false;
+        for (let i = this.connections.length - 1; i >= 0; i--) {
+            const connection = this.connections[i];
+            if (!connection.containsPoint(mouseWorld)) {
+                continue;
+            }
+            foundHoverConnection = true;
+            if (this.hoveredConnection !== connection) {
+                this.hoveredConnection?.unhover();
+
+                connection.hover();
+                this.hoveredConnection = connection;
+            }
+
+            break;
+        }
+
+        if (!foundHoverConnection && this.hoveredConnection) {
+            this.hoveredConnection.unhover();
+            this.hoveredConnection = null;
         }
     }
 
@@ -1022,6 +1222,7 @@ export class Workspace {
         }
 
         this.clearSelection();
+        this.clearConnectionSelection();
 
         const minX = Math.min(this.selectionStart.x, this.selectionEnd.x);
         const maxX = Math.max(this.selectionStart.x, this.selectionEnd.x);
@@ -1045,18 +1246,53 @@ export class Workspace {
             const overlapX = Math.min(nodeRight, boxRight) - Math.max(nodeLeft, boxLeft);
             const overlapY = Math.min(nodeBottom, boxBottom) - Math.max(nodeTop, boxTop);
 
-            if (overlapX > 0.1 && overlapY > 0.1) {
+            if (overlapX > 0.01 && overlapY > 0.01) {
                 this.addToSelection(node);
+            }
+        }
+
+        for (const connection of this.connections) {
+            const from = connection.from.position.add(
+                connection.from.size.div(2)
+            );
+
+            const to = connection.to.position.add(
+                connection.to.size.div(2)
+            );
+
+            const fromInside =
+                from.x >= minX &&
+                from.x <= maxX &&
+                from.y >= minY &&
+                from.y <= maxY;
+
+            const toInside =
+                to.x >= minX &&
+                to.x <= maxX &&
+                to.y >= minY &&
+                to.y <= maxY;
+
+            if (fromInside && toInside) {
+                this.addConnectionToSelection(connection);
             }
         }
     }
 
     private updateSelection() {
-        if (Input.isKeyPressed("Backspace")) {
+        if (Input.isKeyPressed("Backspace") || Input.isKeyPressed("Delete")) {
             this.deleteSelectedNodes();
+            this.deleteSelectedConnections();
         }
 
-        if (Input.isMousePressed(0) && !this.hoveredNode && !this.workspaceSidebar.isMouseInside()) {
+        if (
+            Input.isMousePressed(0) &&
+            !this.hoveredNode &&
+            !this.hoveredConnection &&
+            !this.workspaceSidebar.isMouseInside()
+        ) {
+            this.clearSelection();
+            this.clearConnectionSelection();
+
             this.isSelecting = true;
             this.selectionStart = this.getMouseWorld();
 
@@ -1081,8 +1317,20 @@ export class Workspace {
             return;
         }
 
-        if (!this.hoveredNode) {
+        if (!this.hoveredNode && !this.hoveredConnection) {
             this.clearSelection();
+            this.clearConnectionSelection();
+            return;
+        }
+
+        if (this.hoveredConnection) {
+            this.clearSelection();
+            this.clearConnectionSelection();
+
+            this.addConnectionToSelection(
+                this.hoveredConnection
+            );
+
             return;
         }
 
@@ -1095,8 +1343,12 @@ export class Workspace {
             return;
         }
 
+
         this.clearSelection();
+        this.clearConnectionSelection();
+
         this.addToSelection(this.hoveredNode);
+        this.bringToFront(this.hoveredNode);
     }
 
     private updateNodeDragging() {
@@ -1177,18 +1429,29 @@ export class Workspace {
     update(dt: number) {
         if (!this.visible) return;
 
-        if (Input.isKeyPressed("Space")) {
-            if (Input.isKeyDown("ControlLeft")) {
-                this.focusing = true;
-                this.returning = true;
+        if (Input.isAllKeybindsPressed(Settings.Keybinds.ResetZoomAndFocus)) {
+            this.focusing = true;
+            this.returning = true;
 
-            } else if (Input.isKeyDown("ShiftLeft")) {
-                this.focusing = true;
+            return;
+        }
 
-            } else {
-                this.returning = true;
+        if (Input.isAllKeybindsPressed(Settings.Keybinds.ResetZoom)) {
+            this.focusing = true;
 
-            }
+            return;
+        }
+
+        if (Input.isKeybindsPressed(Settings.Keybinds.FocusWorkspace)) {
+            this.returning = true;
+
+            return;
+        }
+
+        if (Input.isAllKeybindsPressed(Settings.Keybinds.CreateConnection)) {
+            this.createConnection(this.selectedNodes)
+
+            return;
         }
 
         if (this.returning) {
@@ -1199,7 +1462,7 @@ export class Workspace {
             }
         }
 
-        if(this.focusing) {
+        if (this.focusing) {
             this.camera.zoom = this.camera.zoom + (1 - this.camera.zoom) * 10 * dt;
             if (this.camera.zoom > 0.999 && this.camera.zoom < 1.001) {
                 this.camera.zoom = 1;
@@ -1214,7 +1477,7 @@ export class Workspace {
         this.updateSelection();
         this.updateNodeDragging();
 
-        this.workspaceSidebar.update(dt);
+        this.workspaceSidebar.update(dt, this.camera);
 
         const mouseScreen = this.getMouseScreen();
         if (this.workspaceSidebar.containsPoint(mouseScreen)) {
@@ -1262,20 +1525,26 @@ export class Workspace {
         }
     }
 
-    drawNodes(renderer: Renderer) {
+    drawNodes(renderer: Renderer, dt: number) {
         for (const node of this.nodes) {
             const screenPos = this.worldToScreen(node.position);
 
-            node.draw(renderer, screenPos, this.camera.zoom);
+            node.draw(renderer, screenPos, this.camera.zoom, dt);
         }
     }
 
+    drawConnections(renderer: Renderer) {
+        for (const connection of this.connections) {
+            connection.draw(renderer, this.camera);
+        }
+    }
 
-    draw(renderer: Renderer) {
+    draw(renderer: Renderer, dt: number) {
         if (!this.visible) return;
 
         this.drawGrid(renderer);
-        this.drawNodes(renderer);
+        this.drawConnections(renderer);
+        this.drawNodes(renderer, dt);
 
         this.drawSelectionBox(renderer);
 
@@ -1510,15 +1779,16 @@ import { Input } from "./Input";
 import { Vector2 } from "../services/Vector2";
 import { SidebarNode } from "../types/SidebarNode";
 import { Node } from "../types/Node";
+import { Settings } from "./config/Settings";
 
 export class WorkspaceSidebar {
     private visible = false;
-    private size: Vector2 = new Vector2(250, window.innerHeight - 25)
+    private size: Vector2 = new Vector2(250, window.innerHeight + 15)
 
-    private openPosition: Vector2 = new Vector2(-window.innerWidth / 2, -(window.innerHeight / 2))
-    private closePosition: Vector2 = new Vector2((-window.innerWidth / 2) - this.size.x, -(window.innerHeight / 2))
+    private openPosition: Vector2 = new Vector2((-window.innerWidth / 2), -(window.innerHeight / 2)+15)
+    private closePosition: Vector2 = new Vector2((-window.innerWidth / 2) - (this.size.x + 5), -(window.innerHeight / 2)+15)
 
-    private position: Vector2 = this.closePosition
+    private position: Vector2 = this.closePosition.add(new Vector2(-100, 50))
 
     private NodeTemplate: SidebarNode
     private mouseInside: boolean = false;
@@ -1534,6 +1804,14 @@ export class WorkspaceSidebar {
             Input.mousePosition.x - window.innerWidth / 2,
             Input.mousePosition.y - window.innerHeight / 2
         );
+    }
+
+    worldToScreen(position: Vector2): Vector2 {
+        return position.sub(this.camera.position).mult(this.camera.zoom);
+    }
+
+    screenToWorld(position: Vector2): Vector2 {
+        return position.div(this.camera.zoom).add(this.camera.position);
     }
 
     containsPoint(point: Vector2): boolean {
@@ -1565,14 +1843,14 @@ export class WorkspaceSidebar {
         return this.mouseInside;
     }
 
-    update(dt: number) {
+    update(dt: number, camera: unknown) {
         this.size.y = window.innerHeight - 25;
-        this.openPosition = new Vector2(-window.innerWidth / 2, -(window.innerHeight / 2))
-        this.closePosition = new Vector2((-window.innerWidth / 2) - this.size.x, -(window.innerHeight / 2))
+        this.openPosition = new Vector2((-window.innerWidth / 2), -(window.innerHeight / 2)+5)
+        this.closePosition = new Vector2((-window.innerWidth / 2) - (this.size.x + 6), -(window.innerHeight / 2)+5)
 
-        this.closePosition.x = (-window.innerWidth / 2) - this.size.x;
+        this.closePosition.x = (-window.innerWidth / 2) - (this.size.x+6);
 
-        if (Input.isKeyPressed("Tab")) {
+        if (Input.isKeybindsPressed(Settings.Keybinds.ToggleSidebar)) {
             this.toggle();
         }
 
@@ -1600,14 +1878,15 @@ export class WorkspaceSidebar {
 
             const mousePosition = this.getMouseScreen()
             const draggedPosition = mousePosition.sub(this.dragOffset!);
-            const node = new Node(draggedPosition, new Vector2(200, 150), "Node");
+
+            const node = new Node(draggedPosition.div(camera.zoom).add(camera.position), new Vector2(200, 150), "Node", new Vector2(200, 150));
 
             this.onCreateNode(node);
         }
     }
 
     draw(renderer: Renderer) {
-        renderer.rect(this.position, this.size);
+        renderer.rect(this.position, this.size, Settings.Theme.Node.Background, Settings.Theme.Node.Border);
 
         const mousePosition = this.getMouseScreen()
         const draggedPosition = mousePosition.sub(this.dragOffset!);
@@ -1625,7 +1904,7 @@ import { MidnightTheme } from "./Themes/MidnightTheme";
 import { BlueprintTheme } from "./Themes/BlueprintTheme";
 
 export const Settings = {
-    Theme: DarkTheme,
+    Theme: MidnightTheme,
 
     Grid: {
         Size: 50,
@@ -1638,6 +1917,27 @@ export const Settings = {
         MaxZoom: 4,
         ZoomSpeed: 0.1,
     },
+
+    Keybinds: {
+        ToggleSidebar: ["Tab"],
+
+        FocusWorkspace: ["Space"],
+
+        ResetZoom: [
+            "ShiftLeft",
+            "Space"
+        ],
+
+        ResetZoomAndFocus: [
+            "ControlLeft",
+            "Space"
+        ],
+
+        CreateConnection: [
+            "ShiftLeft",
+            "KeyC"
+        ]
+    }
 };
 
 
@@ -1677,7 +1977,7 @@ export const BlueprintTheme = {
     Selection: {
         Border: "#CED8F7",
         Fill: "#CED8F722",
-        Callback: function(selectedNode: unknown) {
+        Callback: function (selectedNode: unknown) {
             console.log("Blueprint theme node selected:", selectedNode);
         }
     },
@@ -1685,6 +1985,12 @@ export const BlueprintTheme = {
     Accent: {
         Primary: "#CED8F7",
         Secondary: "#4A6DE5",
+    },
+
+    Connection: {
+        Line: "#ffffff",
+        Selected: "#ff5930",
+        Hovered: "#ffa7a7"
     },
 };
 
@@ -1712,9 +2018,15 @@ export const DarkTheme = {
     Selection: {
         Border: "#4f9fff",
         Fill: "#4f9fff22",
-        Callback: function(selectedNode: unknown) {
+        Callback: function (selectedNode: unknown) {
             console.log("Dark theme node selected:", selectedNode);
         }
+    },
+
+    Connection: {
+        Line: "#ffffff",
+        Selected: "#3094ff",
+        Hovered: "#a7ccff"
     },
 };
 
@@ -1743,6 +2055,12 @@ export const LightTheme = {
         }
     },
 
+    Connection: {
+    Line: "#000000",
+    Selected: "#3094ff",
+    Hovered: "#a7ccff"
+},
+
 };
 
 
@@ -1763,9 +2081,9 @@ export const MidnightTheme = {
     },
 
     Selection: {
-        Border: "#7c8cff",
+        Border: "#3094ff",
         Fill: "#7c8cff22",
-        Callback: function(selectedNode: unknown) {
+        Callback: function (selectedNode: unknown) {
             console.log("Midnight theme node selected:", selectedNode);
         }
     },
@@ -1773,6 +2091,12 @@ export const MidnightTheme = {
     Accent: {
         Primary: "#7c8cff",
         Secondary: "#4d5aa6",
+    },
+
+    Connection: {
+        Line: "#ffffff",
+        Selected: "#3094ff",
+        Hovered: "#a7ccff"
     },
 };
 
@@ -1944,6 +2268,104 @@ export class Vector2 {
 }
 
 
+FILE: .\src\types\Connection.ts
+============================================================
+import { Node } from "./Node";
+import { Renderer } from "../core/Renderer";
+import { Camera } from "../core/Camera";
+import { Settings } from "../core/config/Settings";
+
+export enum ConnectionState {
+    Normal,
+    Hovered,
+    Selected,
+    Spawning
+}
+
+export class Connection {
+    state: ConnectionState;
+    constructor(
+        public from: Node,
+        public to: Node
+    ) {
+        this.state = ConnectionState.Normal;
+    }
+
+    select() {
+        this.state = ConnectionState.Selected;
+    }
+
+    deselect() {
+        this.state = ConnectionState.Normal;
+    }
+
+    hover() {
+        if (this.state == ConnectionState.Spawning) return
+        if (this.state !== ConnectionState.Selected) {
+            this.state = ConnectionState.Hovered;
+        }
+    }
+
+    unhover() {
+        if (this.state == ConnectionState.Spawning) return
+        if (this.state === ConnectionState.Hovered) {
+            this.state = ConnectionState.Normal;
+        }
+    }
+
+    draw(renderer: Renderer, camera: Camera) {
+        let ConnectionColor = Settings.Theme.Connection.Line
+
+        if (this.state === ConnectionState.Selected) {
+            ConnectionColor = Settings.Theme.Connection.Selected;
+        }
+
+        if (this.state === ConnectionState.Hovered) {
+            ConnectionColor = Settings.Theme.Connection.Hovered;
+        }
+
+        const fromPosition = this.from.position.add(this.from.size.div(2)).sub(camera.position).mult(camera.zoom);
+        const toPosition = this.to.position.add(this.to.size.div(2)).sub(camera.position).mult(camera.zoom);
+
+        renderer.line(fromPosition, toPosition, ConnectionColor);
+    }
+
+    containsPoint(point: Vector2): boolean {
+        // A ------------------- B
+        //          |
+        //          |
+        //          X Mouse
+
+        // A ------ O ---------- B
+        //          ^
+        //          nearest point
+
+        // you measure: distanceTo(mouse, O)
+        // if distance < n Px ==> Hovered
+
+        const start = this.from.position.add(
+            this.from.size.div(2)
+        );
+
+        const end = this.to.position.add(
+            this.to.size.div(2)
+        );
+
+        const line = end.sub(start)
+        const mouse = point.sub(start)
+
+        const lengthSqaured = line.dot(line)
+
+        const t = Math.max(0, Math.min(1, mouse.dot(line) / lengthSqaured));
+        const closestPoint = start.add(line.mult(t));
+
+        const distance = point.distanceTo(closestPoint);
+
+        return distance < 10
+    }
+}
+
+
 FILE: .\src\types\Node.ts
 ============================================================
 import { Vector2 } from "../services/Vector2";
@@ -1953,17 +2375,25 @@ import { Settings } from "../core/config/Settings";
 export enum NodeState {
     Normal,
     Hovered,
-    Selected
+    Selected,
+    Spawning
 }
 
 export class Node {
     state: NodeState;
+    private currentSize: Vector2;
+    private spawnTime = 0;
+    private spawnDuration = 0.25;
     constructor(
         public position: Vector2,
         public size: Vector2,
-        public title: string
+        public title: string,
+        public fromSize: Vector2 = size
     ) {
-        this.state = NodeState.Normal;
+        this.state = NodeState.Spawning;
+        this.currentSize = this.fromSize.copy();
+        this.spawnTime = 0;
+        this.spawnDuration = 0.15;
     }
 
     containsPoint(point: Vector2): boolean {
@@ -1975,7 +2405,7 @@ export class Node {
         );
     }
 
-    draw(renderer: Renderer, position: Vector2, cameraZoom: number = 1) {
+    draw(renderer: Renderer, position: Vector2, cameraZoom: number = 1, dt: number) {
         let backgroundColor = Settings.Theme.Node.Background;
         let borderColor = Settings.Theme.Node.Border;
 
@@ -1989,8 +2419,27 @@ export class Node {
             borderColor = Settings.Theme.Node.HoverBorder;
         }
 
-        renderer.rect(position, this.size.mult(cameraZoom), backgroundColor, borderColor, 10 * cameraZoom);
-        renderer.text(this.title, position.add(new Vector2(10 * cameraZoom, 20 * cameraZoom)), 14, Settings.Theme.Node.Text, cameraZoom);
+        if (this.state === NodeState.Spawning) {
+            this.spawnTime += dt;
+
+            const t = Math.min(this.spawnTime / this.spawnDuration, 1);
+
+            this.currentSize = this.fromSize.lerp(this.size.mult(cameraZoom), t);
+
+            if (t >= 1) {
+                this.state = NodeState.Normal;
+            }
+
+            renderer.rect(position, this.currentSize, backgroundColor, borderColor, 10 * cameraZoom);
+            renderer.text(this.title, position.add(new Vector2(10 * cameraZoom, 20 * cameraZoom)), 14, Settings.Theme.Node.Text, cameraZoom);
+
+        } else {
+            renderer.rect(position, this.size.mult(cameraZoom), backgroundColor, borderColor, 10 * cameraZoom);
+            renderer.text(this.title, position.add(new Vector2(10 * cameraZoom, 20 * cameraZoom)), 14, Settings.Theme.Node.Text, cameraZoom);
+        }
+
+        console.log(this.state);
+
     }
 
     setPosition(newPosition: Vector2) {
@@ -2006,12 +2455,14 @@ export class Node {
     }
 
     hover() {
+        if (this.state == NodeState.Spawning) return
         if (this.state !== NodeState.Selected) {
             this.state = NodeState.Hovered;
         }
     }
 
     unhover() {
+        if (this.state == NodeState.Spawning) return
         if (this.state === NodeState.Hovered) {
             this.state = NodeState.Normal;
         }
