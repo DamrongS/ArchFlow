@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Engine } from "./Engine";
 import { ThemeService } from "../services/ThemeService";
+import { AssetManager } from "./AssetManager";
 
 function App() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -9,18 +10,27 @@ function App() {
     const [engine, setEngine] = useState<Engine | null>(null);
 
     useEffect(() => {
-        const canvas = canvasRef.current;
+        async function initialize() {
+            const canvas = canvasRef.current;
 
-        if (!canvas) {
-            return;
+            if (!canvas) {
+                return;
+            }
+
+            await AssetManager.loadImage(
+                "nexus",
+                "/assets/nexus.png"
+            );
+
+            ThemeService.applyTheme();
+
+            const newEngine = new Engine(canvas);
+            newEngine.start();
+
+            setEngine(newEngine);
         }
 
-        ThemeService.applyTheme();
-
-        const newEngine = new Engine(canvas);
-        newEngine.start();
-        setEngine(newEngine);
-
+        initialize();
     }, []);
 
     return (

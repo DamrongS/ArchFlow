@@ -372,6 +372,10 @@ FILE: .\public\vite.svg
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="31.88" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 257"><defs><linearGradient id="IconifyId1813088fe1fbc01fb466" x1="-.828%" x2="57.636%" y1="7.652%" y2="78.411%"><stop offset="0%" stop-color="#41D1FF"></stop><stop offset="100%" stop-color="#BD34FE"></stop></linearGradient><linearGradient id="IconifyId1813088fe1fbc01fb467" x1="43.376%" x2="50.316%" y1="2.242%" y2="89.03%"><stop offset="0%" stop-color="#FFEA83"></stop><stop offset="8.333%" stop-color="#FFDD35"></stop><stop offset="100%" stop-color="#FFA800"></stop></linearGradient></defs><path fill="url(#IconifyId1813088fe1fbc01fb466)" d="M255.153 37.938L134.897 252.976c-2.483 4.44-8.862 4.466-11.382.048L.875 37.958c-2.746-4.814 1.371-10.646 6.827-9.67l120.385 21.517a6.537 6.537 0 0 0 2.322-.004l117.867-21.483c5.438-.991 9.574 4.796 6.877 9.62Z"></path><path fill="url(#IconifyId1813088fe1fbc01fb467)" d="M185.432.063L96.44 17.501a3.268 3.268 0 0 0-2.634 3.014l-5.474 92.456a3.268 3.268 0 0 0 3.997 3.378l24.777-5.718c2.318-.535 4.413 1.507 3.936 3.838l-7.361 36.047c-.495 2.426 1.782 4.5 4.151 3.78l15.304-4.649c2.372-.72 4.652 1.36 4.15 3.788l-11.698 56.621c-.732 3.542 3.979 5.473 5.943 2.437l1.313-2.028l72.516-144.72c1.215-2.423-.88-5.186-3.54-4.672l-25.505 4.922c-2.396.462-4.435-1.77-3.759-4.114l16.646-57.705c.677-2.35-1.37-4.583-3.769-4.113Z"></path></svg>
 
 
+FILE: .\public\assets\nexus.png
+ERROR: 'utf-8' codec can't decode byte 0x89 in position 0: invalid start byte
+
+
 FILE: .\python\introspection.py
 ============================================================
 import os
@@ -558,6 +562,7 @@ FILE: .\src\core\App.tsx
 import { useEffect, useRef, useState } from "react";
 import { Engine } from "./Engine";
 import { ThemeService } from "../services/ThemeService";
+import { AssetManager } from "./AssetManager";
 
 function App() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -566,18 +571,27 @@ function App() {
     const [engine, setEngine] = useState<Engine | null>(null);
 
     useEffect(() => {
-        const canvas = canvasRef.current;
+        async function initialize() {
+            const canvas = canvasRef.current;
 
-        if (!canvas) {
-            return;
+            if (!canvas) {
+                return;
+            }
+
+            await AssetManager.loadImage(
+                "nexus",
+                "/assets/nexus.png"
+            );
+
+            ThemeService.applyTheme();
+
+            const newEngine = new Engine(canvas);
+            newEngine.start();
+
+            setEngine(newEngine);
         }
 
-        ThemeService.applyTheme();
-
-        const newEngine = new Engine(canvas);
-        newEngine.start();
-        setEngine(newEngine);
-
+        initialize();
     }, []);
 
     return (
@@ -625,6 +639,46 @@ function App() {
 }
 
 export default App;
+
+
+FILE: .\src\core\AssetManager.ts
+============================================================
+export class AssetManager {
+    private static images = new Map<string, HTMLImageElement>();
+
+    static async loadImage(
+        id: string,
+        path: string
+    ): Promise<void> {
+        if (this.images.has(id)) {
+            return;
+        }
+
+        const image = new Image();
+
+        await new Promise<void>((resolve, reject) => {
+            image.onload = () => resolve();
+
+            image.onerror = () => {
+                reject(new Error(`Failed to load image: ${path}`));
+            };
+
+            image.src = path;
+        });
+
+        this.images.set(id, image);
+    }
+
+    static getImage(id: string): HTMLImageElement {
+        const image = this.images.get(id);
+
+        if (!image) {
+            throw new Error(`Missing image: ${id}`);
+        }
+
+        return image;
+    }
+}
 
 
 FILE: .\src\core\Camera.ts
@@ -879,7 +933,13 @@ FILE: .\src\core\Renderer.ts
 import { Vector2 } from "../services/Vector2";
 import { Settings } from "./config/Settings";
 
+export enum ImageMode {
+    Corner,
+    Center
+}
+
 export class Renderer {
+    imageMode: ImageMode = ImageMode.Corner
     constructor(private ctx: CanvasRenderingContext2D) {
 
     }
@@ -909,6 +969,22 @@ export class Renderer {
         this.ctx.font = `${size * cameraZoom}px Arial`;
         this.ctx.fillText(text, position.x, position.y);
     }
+
+    image(image: HTMLImageElement, position: Vector2, size: Vector2) {
+        let drawPosition = position;
+
+        if (this.imageMode === ImageMode.Center) {
+            drawPosition = position.sub(size.div(2));
+        }
+
+        this.ctx.drawImage(
+            image,
+            position.x,
+            position.y,
+            size.x,
+            size.y
+        );
+    }
 }
 
 
@@ -922,10 +998,12 @@ import { Settings } from "./config/Settings";
 import { Node } from "../types/Node";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
 import { Connection } from "../types/Connection"
+import { Nexus } from "../types/Nexus";
 
 export class Workspace {
     camera: Camera;
     nodes: Node[] = [];
+    nexi: Nexus[] = [];
     workspaceSidebar: WorkspaceSidebar;
     private connections: Connection[] = [];
 
@@ -958,6 +1036,8 @@ export class Workspace {
         // new Node(new Vector2(0, 0), new Vector2(200, 150), "Node"),
         //new Node(new Vector2(0, 160), new Vector2(200, 150), "Node")
         //);
+
+        this.nexi.push(new Nexus(new Vector2(0, 0), 1, "NexusTest"));
     }
 
     activate() {
@@ -1340,6 +1420,10 @@ export class Workspace {
         }
 
         if (this.selectedNodes.includes(this.hoveredNode)) {
+            for (const node of this.selectedNodes) {
+                this.bringToFront(node);
+            }
+
             return;
         }
 
@@ -1360,6 +1444,7 @@ export class Workspace {
             this.dragStartPositions.clear();
 
             for (const node of this.draggedNodes) {
+                this.bringToFront(node);
                 this.dragStartPositions.set(node, node.position.copy());
             }
         }
@@ -1539,12 +1624,21 @@ export class Workspace {
         }
     }
 
+    drawNexis(renderer: Renderer, dt: number) {
+        for (const nexus of this.nexi) {
+            const screenPos = this.worldToScreen(nexus.position);
+
+            nexus.draw(renderer, screenPos, this.camera.zoom, dt);
+        }
+    }
+
     draw(renderer: Renderer, dt: number) {
         if (!this.visible) return;
 
         this.drawGrid(renderer);
         this.drawConnections(renderer);
         this.drawNodes(renderer, dt);
+        this.drawNexis(renderer, dt);
 
         this.drawSelectionBox(renderer);
 
@@ -1561,6 +1655,8 @@ export class Workspace {
                 window.innerHeight / 2 - 30
             )
         );
+
+        //renderer.image(AssetManager.getImage("nexus"), new Vector2(0, 0), new Vector2(64, 64));
     }
 }
 
@@ -1772,6 +1868,122 @@ export class WorkspaceManager {
 }
 
 
+FILE: .\src\core\WorkspaceNexusBar.ts
+============================================================
+import { Renderer } from "./Renderer";
+import { Input } from "./Input";
+import { Vector2 } from "../services/Vector2";
+import { SidebarNode } from "../types/SidebarNode";
+import { Node } from "../types/Node";
+import { Settings } from "./config/Settings";
+
+export class WorkspaceNexusBar {
+    private visible = false;
+    private size: Vector2 = new Vector2(250, window.innerHeight + 15)
+
+    private openPosition: Vector2 = new Vector2((window.innerWidth / 2) - (this.size.x + 5), -(window.innerHeight / 2) + 15)
+    private closePosition: Vector2 = new Vector2((window.innerWidth / 2), -(window.innerHeight / 2) + 15)
+
+    private position: Vector2 = this.closePosition.add(new Vector2(-100, 50))
+
+    private NodeTemplate: SidebarNode
+    private mouseInside: boolean = false;
+    private draggingTemplate = false;
+    private dragOffset: Vector2 = new Vector2(0, 0);
+
+    constructor(private onCreateNode: (node: Node) => void) {
+        this.NodeTemplate = new SidebarNode(new Vector2(0, 0), new Vector2(200, 150), "Node")
+    }
+
+    private getMouseScreen(): Vector2 {
+        return new Vector2(
+            Input.mousePosition.x - window.innerWidth / 2,
+            Input.mousePosition.y - window.innerHeight / 2
+        );
+    }
+
+    containsPoint(point: Vector2): boolean {
+        return (
+            point.x >= this.position.x &&
+            point.x <= this.position.x + this.size.x &&
+            point.y >= this.position.y &&
+            point.y <= this.position.y + this.size.y
+        );
+    }
+
+    open() {
+        this.visible = true;
+    }
+
+    close() {
+        this.visible = false;
+    }
+
+    toggle() {
+        this.visible = !this.visible;
+    }
+
+    hover(bool: boolean) {
+        this.mouseInside = bool;
+    }
+
+    isMouseInside() {
+        return this.mouseInside;
+    }
+
+    update(dt: number, camera: unknown) {
+        this.size.y = window.innerHeight - 25;
+        this.openPosition = new Vector2((-window.innerWidth / 2), -(window.innerHeight / 2) + 5)
+        this.closePosition = new Vector2((-window.innerWidth / 2) - (this.size.x + 6), -(window.innerHeight / 2) + 5)
+
+        this.closePosition.x = (-window.innerWidth / 2) - (this.size.x + 6);
+
+        if (Input.isKeybindsPressed(Settings.Keybinds.ToggleSidebar)) {
+            this.toggle();
+        }
+
+        if (this.visible) {
+            this.position = this.position.lerp(this.openPosition, 20 * dt)
+        } else {
+            this.position = this.position.lerp(this.closePosition, 20 * dt)
+        }
+
+        let SidebarPosition = this.position.copy()
+        this.NodeTemplate.move(SidebarPosition.add(new Vector2(20, 25)));
+
+        const mousePosition = this.getMouseScreen();
+        if (this.NodeTemplate.containsPoint(mousePosition) && Input.isMousePressed(0)) {
+            console.log("START DRAG");
+            this.draggingTemplate = true;
+            this.dragOffset = mousePosition.sub(this.NodeTemplate.position);
+            this.NodeTemplate.startDrag();
+        }
+
+        if (this.draggingTemplate && Input.isMouseReleased(0)) {
+            console.log("STOP DRAG");
+            this.draggingTemplate = false;
+            this.NodeTemplate.stopDrag();
+
+            const mousePosition = this.getMouseScreen()
+            const draggedPosition = mousePosition.sub(this.dragOffset!);
+
+            const node = new Node(draggedPosition.div(camera.zoom).add(camera.position), new Vector2(200, 150), "Node", new Vector2(200, 150));
+
+            this.onCreateNode(node);
+        }
+    }
+
+    draw(renderer: Renderer) {
+        renderer.rect(this.position, this.size, Settings.Theme.Node.Background, Settings.Theme.Node.Border);
+
+        const mousePosition = this.getMouseScreen()
+        const draggedPosition = mousePosition.sub(this.dragOffset!);
+
+        this.NodeTemplate.draw(renderer, draggedPosition);
+    }
+}
+
+
 FILE: .\src\core\WorkspaceSidebar.ts
 ============================================================
 import { Renderer } from "./Renderer";
@@ -1904,7 +2116,7 @@ import { MidnightTheme } from "./Themes/MidnightTheme";
 import { BlueprintTheme } from "./Themes/BlueprintTheme";
 
 export const Settings = {
-    Theme: MidnightTheme,
+    Theme: DarkTheme,
 
     Grid: {
         Size: 50,
@@ -1972,6 +2184,10 @@ export const BlueprintTheme = {
         Background: "#3057E1",
         Border: "#CED8F7",
         Text: "#CED8F7",
+        HoverBackground: "#0a0c16",
+        HoverBorder: "rgb(193, 198, 255)",
+        SelectedBackground: "#1e2543",
+        SelectedBorder: "#7181dc",
     },
 
     Selection: {
@@ -2045,6 +2261,10 @@ export const LightTheme = {
         Background: "#ffffff",
         Border: "#3f3f46",
         Text: "#252526",
+        HoverBackground: "#0a0c16",
+        HoverBorder: "rgb(193, 198, 255)",
+        SelectedBackground: "#1e2543",
+        SelectedBorder: "#7181dc",
     },
 
     Selection: {
@@ -2067,36 +2287,46 @@ export const LightTheme = {
 FILE: .\src\core\config\Themes\MidnightTheme.ts
 ============================================================
 export const MidnightTheme = {
-    Background: "#0f1220",
+    Background: "#080b16",
 
     Grid: {
-        Minor: "#1b2038",
-        Major: "#2a3157",
+        Minor: "#12182b",
+        Major: "#1d2745",
     },
 
     Node: {
-        Background: "#181d33",
-        Border: "#4d5aa6",
-        Text: "#e8ecff",
+        Background: "#11172b",
+        Border: "#39477f",
+        Text: "#e6ebff",
+
+        HoverBackground: "#18203a",
+        HoverBorder: "#9ba8ff",
+
+        SelectedBackground: "#202b4d",
+        SelectedBorder: "#b5beff",
     },
 
     Selection: {
-        Border: "#3094ff",
-        Fill: "#7c8cff22",
+        Border: "#8fa0ff",
+        Fill: "#8fa0ff22",
+
         Callback: function (selectedNode: unknown) {
-            console.log("Midnight theme node selected:", selectedNode);
+            console.log(
+                "Midnight theme node selected:",
+                selectedNode
+            );
         }
     },
 
     Accent: {
-        Primary: "#7c8cff",
-        Secondary: "#4d5aa6",
+        Primary: "#8fa0ff",
+        Secondary: "#5668c9",
     },
 
     Connection: {
-        Line: "#ffffff",
-        Selected: "#3094ff",
-        Hovered: "#a7ccff"
+        Line: "#6f7fcf",
+        Hovered: "#b5beff",
+        Selected: "#d4dbff"
     },
 };
 
@@ -2366,6 +2596,44 @@ export class Connection {
 }
 
 
+FILE: .\src\types\Nexus.ts
+============================================================
+import { Vector2 } from "../services/Vector2";
+import { Renderer } from "../core/Renderer";
+import { AssetManager } from "../core/AssetManager";
+
+export class Nexus {
+    constructor(
+        public position: Vector2,
+        public zoom: number,
+        public name: string
+    ) { }
+
+    size = new Vector2(64, 64);
+
+    containsPoint(point: Vector2): boolean {
+        return (
+            point.x >= this.position.x &&
+            point.x <= this.position.x + this.size.x &&
+            point.y >= this.position.y &&
+            point.y <= this.position.y + this.size.y
+        );
+    }
+
+    draw(renderer: Renderer, screenPosition: Vector2, cameraZoom: number = 1, dt: number) {
+        let imagePosition = screenPosition
+        let imageSize = new Vector2(64, 64).mult(cameraZoom)
+
+        let textPosition = imagePosition.add(new Vector2(0, 80).mult(cameraZoom))
+        let textSize = 14 * cameraZoom
+
+        renderer.image(AssetManager.getImage("nexus"), imagePosition, imageSize);
+
+        renderer.text(this.name, textPosition, textSize);
+    }
+}
+
+
 FILE: .\src\types\Node.ts
 ============================================================
 import { Vector2 } from "../services/Vector2";
@@ -2437,8 +2705,6 @@ export class Node {
             renderer.rect(position, this.size.mult(cameraZoom), backgroundColor, borderColor, 10 * cameraZoom);
             renderer.text(this.title, position.add(new Vector2(10 * cameraZoom, 20 * cameraZoom)), 14, Settings.Theme.Node.Text, cameraZoom);
         }
-
-        console.log(this.state);
 
     }
 

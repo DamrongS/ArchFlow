@@ -1,6 +1,6 @@
 import { Vector2 } from "../services/Vector2";
 import { Renderer } from "../core/Renderer";
-import { Settings } from "../core/config/Settings";
+import { AssetManager } from "../core/AssetManager";
 
 export enum NodeState {
     Normal,
@@ -9,22 +9,24 @@ export enum NodeState {
     Spawning
 }
 
-export class Node {
+export class Nexus {
     state: NodeState;
     private currentSize: Vector2;
     private spawnTime = 0;
     private spawnDuration = 0.25;
     constructor(
         public position: Vector2,
-        public size: Vector2,
-        public title: string,
-        public fromSize: Vector2 = size
+        public zoom: number,
+        public name: string,
+        public fromSize: Vector2 = new Vector2(64, 64)
     ) {
         this.state = NodeState.Spawning;
         this.currentSize = this.fromSize.copy();
         this.spawnTime = 0;
         this.spawnDuration = 0.15;
     }
+
+    size = new Vector2(64, 64);
 
     containsPoint(point: Vector2): boolean {
         return (
@@ -35,19 +37,12 @@ export class Node {
         );
     }
 
-    draw(renderer: Renderer, position: Vector2, cameraZoom: number = 1, dt: number) {
-        let backgroundColor = Settings.Theme.Node.Background;
-        let borderColor = Settings.Theme.Node.Border;
+    draw(renderer: Renderer, screenPosition: Vector2, cameraZoom: number = 1, dt: number) {
+        let imagePosition = screenPosition
+        let imageSize = new Vector2(64, 64).mult(cameraZoom)
 
-        if (this.state === NodeState.Selected) {
-            backgroundColor = Settings.Theme.Node.SelectedBackground;
-            borderColor = Settings.Theme.Node.SelectedBorder;
-        }
-
-        if (this.state === NodeState.Hovered) {
-            backgroundColor = Settings.Theme.Node.HoverBackground;
-            borderColor = Settings.Theme.Node.HoverBorder;
-        }
+        let textPosition = imagePosition.add(new Vector2(0, 80).mult(cameraZoom))
+        let textSize = 14 * cameraZoom
 
         if (this.state === NodeState.Spawning) {
             this.spawnTime += dt;
@@ -60,14 +55,12 @@ export class Node {
                 this.state = NodeState.Normal;
             }
 
-            renderer.rect(position, this.currentSize, backgroundColor, borderColor, 10 * cameraZoom);
-            renderer.text(this.title, position.add(new Vector2(10 * cameraZoom, 20 * cameraZoom)), 14, Settings.Theme.Node.Text, cameraZoom);
+            renderer.image(AssetManager.getImage("nexus"), imagePosition, this.currentSize);
 
         } else {
-            renderer.rect(position, this.size.mult(cameraZoom), backgroundColor, borderColor, 10 * cameraZoom);
-            renderer.text(this.title, position.add(new Vector2(10 * cameraZoom, 20 * cameraZoom)), 14, Settings.Theme.Node.Text, cameraZoom);
+            renderer.image(AssetManager.getImage("nexus"), imagePosition, imageSize);
+            renderer.text(this.name, textPosition, textSize);
         }
-
     }
 
     setPosition(newPosition: Vector2) {

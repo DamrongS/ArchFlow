@@ -6,10 +6,12 @@ import { Settings } from "./config/Settings";
 import { Node } from "../types/Node";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
 import { Connection } from "../types/Connection"
+import { Nexus } from "../types/Nexus";
 
 export class Workspace {
     camera: Camera;
     nodes: Node[] = [];
+    nexi: Nexus[] = [];
     workspaceSidebar: WorkspaceSidebar;
     private connections: Connection[] = [];
 
@@ -36,12 +38,14 @@ export class Workspace {
 
     constructor(public name: string) {
         this.camera = new Camera();
-        this.workspaceSidebar = new WorkspaceSidebar(this.addNode.bind(this));
+        this.workspaceSidebar = new WorkspaceSidebar(this.addNode.bind(this), this.addNexus.bind(this));
 
         //this.nodes.push(
         // new Node(new Vector2(0, 0), new Vector2(200, 150), "Node"),
         //new Node(new Vector2(0, 160), new Vector2(200, 150), "Node")
         //);
+
+        this.nexi.push(new Nexus(new Vector2(0, 0), 1, "NexusTest"));
     }
 
     activate() {
@@ -58,6 +62,10 @@ export class Workspace {
 
     addNode(node: Node) {
         this.nodes.push(node);
+    }
+
+    addNexus(nexus: Nexus) {
+        this.nexi.push(nexus);
     }
 
     private addConnectionToSelection(connection: Connection) {
@@ -424,6 +432,10 @@ export class Workspace {
         }
 
         if (this.selectedNodes.includes(this.hoveredNode)) {
+            for (const node of this.selectedNodes) {
+                this.bringToFront(node);
+            }
+
             return;
         }
 
@@ -444,6 +456,7 @@ export class Workspace {
             this.dragStartPositions.clear();
 
             for (const node of this.draggedNodes) {
+                this.bringToFront(node);
                 this.dragStartPositions.set(node, node.position.copy());
             }
         }
@@ -623,12 +636,21 @@ export class Workspace {
         }
     }
 
+    drawNexis(renderer: Renderer, dt: number) {
+        for (const nexus of this.nexi) {
+            const screenPos = this.worldToScreen(nexus.position);
+
+            nexus.draw(renderer, screenPos, this.camera.zoom, dt);
+        }
+    }
+
     draw(renderer: Renderer, dt: number) {
         if (!this.visible) return;
 
         this.drawGrid(renderer);
         this.drawConnections(renderer);
         this.drawNodes(renderer, dt);
+        this.drawNexis(renderer, dt);
 
         this.drawSelectionBox(renderer);
 
@@ -645,5 +667,7 @@ export class Workspace {
                 window.innerHeight / 2 - 30
             )
         );
+
+        //renderer.image(AssetManager.getImage("nexus"), new Vector2(0, 0), new Vector2(64, 64));
     }
 }

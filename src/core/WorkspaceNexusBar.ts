@@ -1,0 +1,112 @@
+import { Renderer } from "./Renderer";
+import { Input } from "./Input";
+import { Vector2 } from "../services/Vector2";
+import { SidebarNode } from "../types/SidebarNode";
+import { Node } from "../types/Node";
+import { Settings } from "./config/Settings";
+
+export class WorkspaceNexusBar {
+    private visible = false;
+    private size: Vector2 = new Vector2(250, window.innerHeight + 15)
+
+    private openPosition: Vector2 = new Vector2((window.innerWidth / 2) - (this.size.x + 5), -(window.innerHeight / 2) + 15)
+    private closePosition: Vector2 = new Vector2((window.innerWidth / 2), -(window.innerHeight / 2) + 15)
+
+    private position: Vector2 = this.closePosition.add(new Vector2(-100, 50))
+
+    private NodeTemplate: SidebarNode
+    private mouseInside: boolean = false;
+    private draggingTemplate = false;
+    private dragOffset: Vector2 = new Vector2(0, 0);
+
+    constructor(private onCreateNode: (node: Node) => void) {
+        this.NodeTemplate = new SidebarNode(new Vector2(0, 0), new Vector2(200, 150), "Node")
+    }
+
+    private getMouseScreen(): Vector2 {
+        return new Vector2(
+            Input.mousePosition.x - window.innerWidth / 2,
+            Input.mousePosition.y - window.innerHeight / 2
+        );
+    }
+
+    containsPoint(point: Vector2): boolean {
+        return (
+            point.x >= this.position.x &&
+            point.x <= this.position.x + this.size.x &&
+            point.y >= this.position.y &&
+            point.y <= this.position.y + this.size.y
+        );
+    }
+
+    open() {
+        this.visible = true;
+    }
+
+    close() {
+        this.visible = false;
+    }
+
+    toggle() {
+        this.visible = !this.visible;
+    }
+
+    hover(bool: boolean) {
+        this.mouseInside = bool;
+    }
+
+    isMouseInside() {
+        return this.mouseInside;
+    }
+
+    update(dt: number, camera: unknown) {
+        this.size.y = window.innerHeight - 25;
+        this.openPosition = new Vector2((-window.innerWidth / 2), -(window.innerHeight / 2) + 5)
+        this.closePosition = new Vector2((-window.innerWidth / 2) - (this.size.x + 6), -(window.innerHeight / 2) + 5)
+
+        this.closePosition.x = (-window.innerWidth / 2) - (this.size.x + 6);
+
+        if (Input.isKeybindsPressed(Settings.Keybinds.ToggleSidebar)) {
+            this.toggle();
+        }
+
+        if (this.visible) {
+            this.position = this.position.lerp(this.openPosition, 20 * dt)
+        } else {
+            this.position = this.position.lerp(this.closePosition, 20 * dt)
+        }
+
+        let SidebarPosition = this.position.copy()
+        this.NodeTemplate.move(SidebarPosition.add(new Vector2(20, 25)));
+
+        const mousePosition = this.getMouseScreen();
+        if (this.NodeTemplate.containsPoint(mousePosition) && Input.isMousePressed(0)) {
+            console.log("START DRAG");
+            this.draggingTemplate = true;
+            this.dragOffset = mousePosition.sub(this.NodeTemplate.position);
+            this.NodeTemplate.startDrag();
+        }
+
+        if (this.draggingTemplate && Input.isMouseReleased(0)) {
+            console.log("STOP DRAG");
+            this.draggingTemplate = false;
+            this.NodeTemplate.stopDrag();
+
+            const mousePosition = this.getMouseScreen()
+            const draggedPosition = mousePosition.sub(this.dragOffset!);
+
+            const node = new Node(draggedPosition.div(camera.zoom).add(camera.position), new Vector2(200, 150), "Node", new Vector2(200, 150));
+
+            this.onCreateNode(node);
+        }
+    }
+
+    draw(renderer: Renderer) {
+        renderer.rect(this.position, this.size, Settings.Theme.Node.Background, Settings.Theme.Node.Border);
+
+        const mousePosition = this.getMouseScreen()
+        const draggedPosition = mousePosition.sub(this.dragOffset!);
+
+        this.NodeTemplate.draw(renderer, draggedPosition);
+    }
+}
